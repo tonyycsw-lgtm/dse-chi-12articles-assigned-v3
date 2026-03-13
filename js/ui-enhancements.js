@@ -592,6 +592,8 @@ function refreshUnitSelect(filteredUnits = null) {
                 errorCount++;
               }
             });
+            // ✅ 立即更新下拉選單
+            refreshUnitSelect();
           } 
           else if (parsedData.article && parsedData.vocabulary) {
             const baseName = parsedData.unitName || file.name.replace('.json', '');
@@ -601,6 +603,8 @@ function refreshUnitSelect(filteredUnits = null) {
 
             core.addUnit(unitId, uniqueName, parsedData, metadata);
             successCount++;
+            // ✅ 立即更新下拉選單
+            refreshUnitSelect();
           }
           else {
             throw new Error('無法識別的檔案格式：缺少 article/vocabulary 或不是有效的備份檔');
@@ -611,8 +615,7 @@ function refreshUnitSelect(filteredUnits = null) {
             console.log(message);
             alert(message);
             
-            refreshUnitSelect();
-            
+            // 如果只有一個檔案且成功，自動選取
             if (files.length === 1 && successCount === 1) {
               const allUnits = core.getAllUnits();
               const latestUnitId = Object.keys(allUnits).sort((a, b) => allUnits[b].timestamp - allUnits[a].timestamp)[0];
@@ -648,7 +651,6 @@ function refreshUnitSelect(filteredUnits = null) {
       reader.readAsText(file);
     });
   }
-
   // ========== 初始化 ==========
   function initUI() {
     const controlBar = document.querySelector('.unit-control-bar .unit-selector-wrapper');
