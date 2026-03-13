@@ -81,7 +81,10 @@
   }
 
   function closeManagerModal() {
-    if (managerModal) managerModal.style.display = 'none';
+    if (managerModal) {
+      managerModal.style.display = 'none';
+      refreshUnitSelect(); // 關閉管理對話框時刷新選單
+    }
   }
 
   function refreshUnitsList() {
@@ -207,6 +210,176 @@
     e.target.value = '';
   }
 
+  // ========== 整合拖放上傳的浮動面板 ==========
+  let uploadPanel = null;
+
+  function createUploadPanel() {
+    if (document.getElementById('upload-panel')) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'upload-panel';
+    panel.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      max-width: 500px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      z-index: 3000;
+      padding: 24px;
+      display: none;
+    `;
+    panel.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="font-size: 20px; color: #1e293b;"><i class="fas fa-upload"></i> 上傳單元</h3>
+        <button id="close-upload-panel" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #64748b;">&times;</button>
+      </div>
+      
+      <!-- 拖放區域 -->
+      <div id="upload-drop-zone" style="
+        border: 3px dashed #cbd5e1;
+        border-radius: 12px;
+        padding: 40px 20px;
+        text-align: center;
+        margin-bottom: 20px;
+        background: #f8fafc;
+        transition: all 0.2s;
+        cursor: pointer;
+      ">
+        <i class="fas fa-cloud-upload-alt fa-3x" style="color: #4f46e5; margin-bottom: 15px;"></i>
+        <p style="color: #475569; margin-bottom: 10px;">拖放 JSON 檔案到這裡</p>
+        <p style="color: #94a3b8; font-size: 14px;">或</p>
+        <button id="select-files-btn" class="btn" style="background: #4f46e5; color: white; margin-top: 10px; padding: 10px 20px;">
+          <i class="fas fa-folder-open"></i> 點擊選擇檔案
+        </button>
+        <p style="color: #94a3b8; font-size: 12px; margin-top: 15px;">支援 .json 格式，可多選</p>
+      </div>
+
+      <!-- 檔案列表 -->
+      <div id="upload-file-list" style="max-height: 200px; overflow-y: auto; margin-top: 10px; display: none;">
+        <h4 style="font-size: 14px; color: #1e293b; margin-bottom: 10px;">已選擇的檔案：</h4>
+        <div id="file-items"></div>
+      </div>
+
+      <!-- 上傳按鈕 -->
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button id="cancel-upload-btn" class="btn btn-outline">取消</button>
+        <button id="confirm-upload-btn" class="btn" style="background: #4f46e5; color: white;" disabled>
+          <i class="fas fa-upload"></i> 開始上傳
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(panel);
+    uploadPanel = panel;
+
+    // 關閉按鈕
+    document.getElementById('close-upload-panel').addEventListener('click', closeUploadPanel);
+    document.getElementById('cancel-upload-btn').addEventListener('click', closeUploadPanel);
+
+    // 點擊背景關閉
+    panel.addEventListener('click', (e) => {
+      if (e.target === panel) closeUploadPanel();
+    });
+
+    // 拖放區域點擊選擇檔案
+    const dropZone = document.getElementById('upload-drop-zone');
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json,application/json';
+    fileInput.multiple = true;
+    fileInput.style.display = 'none';
+    panel.appendChild(fileInput);
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    // 拖放事件
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.style.background = '#eef2ff';
+      dropZone.style.borderColor = '#4f46e5';
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.style.background = '#f8fafc';
+      dropZone.style.borderColor = '#cbd5e1';
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.style.background = '#f8fafc';
+      dropZone.style.borderColor = '#cbd5e1';
+      
+      const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/json' || f.name.endsWith('.json'));
+      if (files.length > 0) {
+        handleSelectedFiles(files);
+      } else {
+        alert('請拖放 JSON 檔案');
+      }
+    });
+
+    // 檔案選擇事件
+    fileInput.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files);
+      if (files.length > 0) {
+        handleSelectedFiles(files);
+      }
+      fileInput.value = ''; // 清除，允許重新選擇相同檔案
+    });
+
+    // 確認上傳按鈕
+    document.getElementById('confirm-upload-btn').addEventListener('click', () => {
+      if (window.pendingFiles && window.pendingFiles.length > 0) {
+        handleMultipleFilesUpload(window.pendingFiles);
+        closeUploadPanel();
+      }
+    });
+  }
+
+  let pendingFiles = [];
+
+  function handleSelectedFiles(files) {
+    window.pendingFiles = files;
+    const fileList = document.getElementById('upload-file-list');
+    const fileItems = document.getElementById('file-items');
+    const confirmBtn = document.getElementById('confirm-upload-btn');
+
+    // 顯示檔案列表
+    let html = '';
+    files.forEach(file => {
+      const size = (file.size / 1024).toFixed(2);
+      html += `
+        <div style="display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #e2e8f0;">
+          <span><i class="fas fa-file-code" style="color: #4f46e5; margin-right: 8px;"></i>${file.name}</span>
+          <span style="color: #64748b; font-size: 12px;">${size} KB</span>
+        </div>
+      `;
+    });
+    fileItems.innerHTML = html;
+    fileList.style.display = 'block';
+    confirmBtn.disabled = false;
+  }
+
+  function openUploadPanel() {
+    if (!uploadPanel) createUploadPanel();
+    
+    // 重置狀態
+    window.pendingFiles = [];
+    document.getElementById('upload-file-list').style.display = 'none';
+    document.getElementById('confirm-upload-btn').disabled = true;
+    
+    uploadPanel.style.display = 'block';
+  }
+
+  function closeUploadPanel() {
+    if (uploadPanel) {
+      uploadPanel.style.display = 'none';
+    }
+  }
+
   // ========== 下拉選單與分類篩選 ==========
   function refreshUnitSelect(filteredUnits = null) {
     const select = document.getElementById('unit-select');
@@ -216,53 +389,61 @@
     select.innerHTML = '<option value="">請選擇課文</option>';
 
     let unitsToShow = [];
+    let hasAnyUnits = false;
 
-    // 1. 加入上傳的單元（來自 localStorage）
-    const uploadedUnits = Object.entries(core.getAllUnits()).map(([id, unit]) => ({
+    // 1. 加入上傳的單元（來自 localStorage）- 這是唯一顯示的單元
+    const uploadedUnitsMap = core.getAllUnits();
+    const uploadedUnits = Object.entries(uploadedUnitsMap).map(([id, unit]) => ({
       id,
       name: unit.name,
       data: unit.data,
       type: 'upload'
     }));
-    unitsToShow.push(...uploadedUnits);
-
-    // 2. 加入索引單元（來自全域 unitsIndex）
-    if (typeof unitsIndex !== 'undefined' && Array.isArray(unitsIndex)) {
-      const indexUnits = unitsIndex.map(item => ({
-        id: item.unitId,
-        name: item.unitName,
-        dataUrl: item.dataUrl,
-        type: 'index'
-      }));
-      unitsToShow.push(...indexUnits);
+    
+    if (uploadedUnits.length > 0) {
+      unitsToShow.push(...uploadedUnits);
+      hasAnyUnits = true;
     }
 
-    // 3. 若有篩選條件，則過濾
-    if (filteredUnits) {
-      // filteredUnits 來自 core.filterUnits，只包含上傳單元
-      // 這裡我們簡單合併：僅顯示上傳單元中符合條件的 + 全部索引單元
-      // 若希望索引單元也參與篩選，需另外實作（可依需求擴充）
-      unitsToShow = [
-        ...filteredUnits.map(u => ({ id: u.id, name: u.name, data: u.data, type: 'upload' })),
-        ...(typeof unitsIndex !== 'undefined' ? unitsIndex.map(item => ({ id: item.unitId, name: item.unitName, dataUrl: item.dataUrl, type: 'index' })) : [])
-      ];
+    // 2. 若有篩選條件，則過濾
+    if (filteredUnits && filteredUnits.length > 0) {
+      const filteredIds = new Set(filteredUnits.map(u => u.id));
+      unitsToShow = uploadedUnits.filter(u => filteredIds.has(u.id));
+      
+      if (unitsToShow.length > 0) {
+        hasAnyUnits = true;
+      }
+    }
+
+    // 如果完全沒有任何單元可顯示
+    if (!hasAnyUnits || unitsToShow.length === 0) {
+      select.innerHTML = '<option value="">沒有可用的課文</option>';
+      return;
     }
 
     // 依名稱排序
     unitsToShow.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
 
-    unitsToShow.forEach(item => {
+    // 清除重複的 ID（防止意外情況）
+    const seenIds = new Set();
+    const uniqueUnitsToShow = unitsToShow.filter(item => {
+      if (seenIds.has(item.id)) {
+        console.warn('發現重複的單元 ID:', item.id);
+        return false;
+      }
+      seenIds.add(item.id);
+      return true;
+    });
+
+    uniqueUnitsToShow.forEach(item => {
       const option = document.createElement('option');
       option.value = item.id;
       option.textContent = item.name;
-      if (item.type === 'upload') {
-        option.dataset.data = JSON.stringify(item.data); // 上傳單元直接儲存 data
-      } else {
-        option.dataset.url = item.dataUrl; // 索引單元儲存 dataUrl
-      }
+      option.dataset.data = JSON.stringify(item.data);
       select.appendChild(option);
     });
 
+    // 嘗試恢復之前選取的值
     if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
       select.value = currentValue;
     }
@@ -317,7 +498,6 @@
 
     const filtered = core.filterUnits(criteria);
     refreshUnitSelect(filtered);
-    updatePreviewWithFirstUnit(filtered.length > 0 ? filtered[0] : null);
   }
 
   function clearFilters() {
@@ -326,101 +506,6 @@
     document.getElementById('author-filter').value = '';
     document.getElementById('tag-filter').value = '';
     refreshUnitSelect();
-    updatePreviewWithFirstUnit(null);
-  }
-
-  // ========== 單元預覽卡片 ==========
-  function createPreviewCard() {
-    if (document.getElementById('unit-preview')) return;
-    const preview = document.createElement('div');
-    preview.id = 'unit-preview';
-    preview.style.cssText = `
-      margin-bottom: 20px;
-      padding: 15px;
-      background: #f8fafc;
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
-      display: none;
-    `;
-    preview.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h4 style="margin: 0; font-size: 16px; color: #1e293b;">當前單元預覽</h4>
-        <button id="close-preview" style="border: none; background: none; font-size: 18px; cursor: pointer;">&times;</button>
-      </div>
-      <div id="preview-content" style="display: flex; gap: 20px; margin-top: 10px;">
-        <div style="flex: 1;">
-          <div><strong>名稱：</strong> <span id="preview-name"></span></div>
-          <div><strong>作者：</strong> <span id="preview-author"></span></div>
-          <div><strong>分類：</strong> <span id="preview-category"></span></div>
-          <div><strong>段落數：</strong> <span id="preview-paragraphs"></span></div>
-          <div><strong>詞彙數：</strong> <span id="preview-vocab"></span></div>
-        </div>
-        <div style="flex: 2;">
-          <div><strong>文章開頭：</strong></div>
-          <div id="preview-excerpt" style="background: white; padding: 10px; border-radius: 4px; font-size: 12px; color: #475569; max-height: 80px; overflow-y: auto;"></div>
-        </div>
-      </div>
-    `;
-    const a4Container = document.querySelector('.a4-container');
-    a4Container.parentNode.insertBefore(preview, a4Container);
-
-    document.getElementById('close-preview').addEventListener('click', () => {
-      preview.style.display = 'none';
-    });
-  }
-
-  function updatePreviewWithFirstUnit(unit) {
-    const preview = document.getElementById('unit-preview');
-    if (!preview) return;
-    if (!unit) {
-      preview.style.display = 'none';
-      return;
-    }
-    const fullUnit = core.getUnit(unit.id);
-    if (!fullUnit) return;
-
-    document.getElementById('preview-name').textContent = fullUnit.name;
-    document.getElementById('preview-author').textContent = fullUnit.metadata?.author || '';
-    document.getElementById('preview-category').textContent = fullUnit.metadata?.category || '';
-    document.getElementById('preview-paragraphs').textContent = fullUnit.metadata?.paragraphCount || 0;
-    document.getElementById('preview-vocab').textContent = fullUnit.metadata?.vocabCount || 0;
-
-    const firstPara = fullUnit.data?.article?.paragraphs[0]?.slices.map(s => s.text).join('') || '';
-    const excerpt = firstPara.substring(0, 50) + (firstPara.length > 50 ? '...' : '');
-    document.getElementById('preview-excerpt').textContent = excerpt;
-
-    preview.style.display = 'block';
-  }
-
-  // ========== 拖放上傳 ==========
-  function setupDragAndDrop() {
-    const dropZone = document.getElementById('drop-zone');
-    if (!dropZone) return;
-
-    dropZone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      dropZone.style.background = '#eef2ff';
-      dropZone.style.borderColor = '#4f46e5';
-    });
-
-    dropZone.addEventListener('dragleave', () => {
-      dropZone.style.background = '';
-      dropZone.style.borderColor = '';
-    });
-
-    dropZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropZone.style.background = '';
-      dropZone.style.borderColor = '';
-
-      const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/json' || f.name.endsWith('.json'));
-      if (files.length === 0) {
-        alert('請拖放 JSON 檔案');
-        return;
-      }
-
-      handleMultipleFilesUpload(files);
-    });
   }
 
   // ========== 多檔案上處理（支援備份檔案） ==========
@@ -517,6 +602,16 @@
   function initUI() {
     const controlBar = document.querySelector('.unit-control-bar .unit-selector-wrapper');
     if (controlBar) {
+      // 修改上傳按鈕行為
+      const uploadBtn = document.querySelector('.upload-btn');
+      if (uploadBtn) {
+        uploadBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          openUploadPanel();
+        });
+      }
+
+      // 加入管理按鈕
       const manageBtn = document.createElement('button');
       manageBtn.className = 'btn btn-outline';
       manageBtn.id = 'manage-units-btn';
@@ -532,39 +627,11 @@
     controlBarParent.parentNode.insertBefore(filterContainer, controlBarParent.nextSibling);
 
     buildCategoryFilters();
-    createPreviewCard();
 
-    const dropZone = document.createElement('div');
-    dropZone.id = 'drop-zone';
-    dropZone.style.cssText = `
-      border: 2px dashed #cbd5e1;
-      border-radius: 8px;
-      padding: 20px;
-      text-align: center;
-      margin-bottom: 20px;
-      color: #64748b;
-      transition: all 0.2s;
-    `;
-    dropZone.innerHTML = `
-      <i class="fas fa-cloud-upload-alt fa-2x" style="color: #4f46e5;"></i>
-      <p>拖放 JSON 檔案到這裡，或 <a href="#" onclick="document.getElementById('unit-upload').click()">點擊選擇</a></p>
-    `;
-    controlBarParent.parentNode.insertBefore(dropZone, controlBarParent);
-
-    setupDragAndDrop();
-
-    const uploadInput = document.getElementById('unit-upload');
-    if (uploadInput) {
-      const newUploadInput = uploadInput.cloneNode(true);
-      uploadInput.parentNode.replaceChild(newUploadInput, uploadInput);
-      newUploadInput.setAttribute('multiple', 'multiple');
-      newUploadInput.addEventListener('change', function(e) {
-        const files = Array.from(e.target.files);
-        if (files.length > 0) {
-          handleMultipleFilesUpload(files);
-        }
-        e.target.value = '';
-      });
+    // 隱藏原本的檔案輸入
+    const originalUpload = document.getElementById('unit-upload');
+    if (originalUpload) {
+      originalUpload.style.display = 'none';
     }
 
     refreshUnitSelect();
@@ -573,11 +640,7 @@
       const selectedId = e.target.value;
       if (selectedId) {
         const unit = core.getUnit(selectedId);
-        if (unit) {
-          updatePreviewWithFirstUnit({ id: selectedId });
-        }
-      } else {
-        document.getElementById('unit-preview').style.display = 'none';
+        // 不再更新預覽卡片
       }
     });
   }
@@ -591,6 +654,8 @@
   global.DSEUIEnhancements = {
     refreshUnitSelect,
     openManagerModal,
-    closeManagerModal
+    closeManagerModal,
+    openUploadPanel,
+    closeUploadPanel
   };
 })(window);
