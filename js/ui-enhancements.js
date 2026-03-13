@@ -1,5 +1,4 @@
-//此檔案負責管理對話框、分類篩選、單元預覽、拖放上傳等 UI 互動，依賴於 DSEUnitCore。
-// ui-enhancements.js - DSE 介面增強功能
+// ui-enhancements.js - DSE 介面增強功能（支援備份檔案匯入）
 (function(global) {
   'use strict';
 
@@ -216,20 +215,51 @@
     const currentValue = select.value;
     select.innerHTML = '<option value="">請選擇課文</option>';
 
-    let unitsToShow;
-    if (filteredUnits) {
-      unitsToShow = filteredUnits;
-    } else {
-      unitsToShow = Object.entries(core.getAllUnits()).map(([id, unit]) => ({ id, ...unit }));
+    let unitsToShow = [];
+
+    // 1. 加入上傳的單元（來自 localStorage）
+    const uploadedUnits = Object.entries(core.getAllUnits()).map(([id, unit]) => ({
+      id,
+      name: unit.name,
+      data: unit.data,
+      type: 'upload'
+    }));
+    unitsToShow.push(...uploadedUnits);
+
+    // 2. 加入索引單元（來自全域 unitsIndex）
+    if (typeof unitsIndex !== 'undefined' && Array.isArray(unitsIndex)) {
+      const indexUnits = unitsIndex.map(item => ({
+        id: item.unitId,
+        name: item.unitName,
+        dataUrl: item.dataUrl,
+        type: 'index'
+      }));
+      unitsToShow.push(...indexUnits);
     }
 
+    // 3. 若有篩選條件，則過濾
+    if (filteredUnits) {
+      // filteredUnits 來自 core.filterUnits，只包含上傳單元
+      // 這裡我們簡單合併：僅顯示上傳單元中符合條件的 + 全部索引單元
+      // 若希望索引單元也參與篩選，需另外實作（可依需求擴充）
+      unitsToShow = [
+        ...filteredUnits.map(u => ({ id: u.id, name: u.name, data: u.data, type: 'upload' })),
+        ...(typeof unitsIndex !== 'undefined' ? unitsIndex.map(item => ({ id: item.unitId, name: item.unitName, dataUrl: item.dataUrl, type: 'index' })) : [])
+      ];
+    }
+
+    // 依名稱排序
     unitsToShow.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
 
     unitsToShow.forEach(item => {
       const option = document.createElement('option');
       option.value = item.id;
       option.textContent = item.name;
-      option.dataset.data = JSON.stringify(item.data);
+      if (item.type === 'upload') {
+        option.dataset.data = JSON.stringify(item.data); // 上傳單元直接儲存 data
+      } else {
+        option.dataset.url = item.dataUrl; // 索引單元儲存 dataUrl
+      }
       select.appendChild(option);
     });
 
@@ -393,39 +423,92 @@
     });
   }
 
+  // ========== 多檔案上處理（支援備份檔案） ==========
   function handleMultipleFilesUpload(files) {
     const select = document.getElementById('unit-select');
     let successCount = 0;
+    let errorCount = 0;
 
     files.forEach(file => {
       const reader = new FileReader();
       reader.onload = (ev) => {
         try {
-          const data = JSON.parse(ev.target.result);
-          if (!data.article || !data.vocabulary) {
-            throw new Error('缺少 article 或 vocabulary');
+          const parsedData = JSON.parse(ev.target.result);
+          
+          // 情況1：備份檔案格式（有 units 欄位）
+          if (parsedData.units && parsedData.version === '1.0') {
+            // 這是備份檔案，處理其中的每個單元
+            const unitEntries = Object.entries(parsedData.units);
+            unitEntries.forEach(([unitId, unitData]) => {
+              // 檢查是否有 data 欄位且包含 article 和 vocabulary
+              if (unitData.data && unitData.data.article && unitData.data.vocabulary) {
+                const uniqueName = core.getUniqueUnitName(unitData.name);
+                const newUnitId = core.generateUnitId(unitData.name);
+                const metadata = core.extractMetadata(unitData.data);
+                
+                core.addUnit(newUnitId, uniqueName, unitData.data, metadata);
+                successCount++;
+              } else {
+                console.warn('備份檔案中的單元格式錯誤:', unitId);
+                errorCount++;
+              }
+            });
+          } 
+          // 情況2：單一課文檔案格式（直接有 article 和 vocabulary）
+          else if (parsedData.article && parsedData.vocabulary) {
+            const baseName = parsedData.unitName || file.name.replace('.json', '');
+            const uniqueName = core.getUniqueUnitName(baseName);
+            const unitId = core.generateUnitId(baseName);
+            const metadata = core.extractMetadata(parsedData);
+
+            core.addUnit(unitId, uniqueName, parsedData, metadata);
+            successCount++;
+          }
+          // 情況3：未知格式
+          else {
+            throw new Error('無法識別的檔案格式：缺少 article/vocabulary 或不是有效的備份檔');
           }
 
-          const baseName = data.unitName || file.name.replace('.json', '');
-          const uniqueName = core.getUniqueUnitName(baseName);
-          const unitId = core.generateUnitId(baseName);
-          const metadata = core.extractMetadata(data);
-
-          core.addUnit(unitId, uniqueName, data, metadata);
-
-          successCount++;
-          if (successCount === files.length) {
-            alert(`成功上傳 ${successCount} 個單元`);
+          // 所有檔案處理完成後顯示結果
+          if (successCount + errorCount === files.length) {
+            const message = `處理完成：${successCount} 個成功，${errorCount} 個失敗`;
+            console.log(message);
+            alert(message);
+            
             refreshUnitSelect();
-            if (files.length === 1) {
-              select.value = unitId;
-              select.dispatchEvent(new Event('change'));
+            
+            // 如果只有一個檔案且成功，自動選取
+            if (files.length === 1 && successCount === 1) {
+              // 找出最新加入的單元（最後一個）
+              const allUnits = core.getAllUnits();
+              const latestUnitId = Object.keys(allUnits).sort((a, b) => allUnits[b].timestamp - allUnits[a].timestamp)[0];
+              if (latestUnitId) {
+                select.value = latestUnitId;
+                select.dispatchEvent(new Event('change'));
+              }
             }
           }
         } catch (ex) {
+          errorCount++;
+          console.error(`解析檔案 ${file.name} 失敗：`, ex);
           alert(`解析檔案 ${file.name} 失敗：${ex.message}`);
+          
+          // 仍然檢查是否所有檔案都處理完
+          if (successCount + errorCount === files.length) {
+            alert(`處理完成：${successCount} 個成功，${errorCount} 個失敗`);
+            refreshUnitSelect();
+          }
         }
       };
+      
+      reader.onerror = () => {
+        errorCount++;
+        console.error(`讀取檔案 ${file.name} 失敗`);
+        if (successCount + errorCount === files.length) {
+          alert(`處理完成：${successCount} 個成功，${errorCount} 個失敗`);
+        }
+      };
+      
       reader.readAsText(file);
     });
   }
