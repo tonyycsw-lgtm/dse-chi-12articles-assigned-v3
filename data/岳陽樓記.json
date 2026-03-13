@@ -1,6 +1,13 @@
 {
   "unitId": "yueyanglouji",
   "unitName": "《岳陽樓記》范仲淹",
+"metadata": {
+  "category": "唐宋古文",
+  "author": "范仲淹",
+  "period": "北宋",
+  "difficulty": "進階",
+  "tags": ["寫景", "抒情", "議論", "政治抱負", "借景抒情", "對比",  "DSE 指定"]
+},
   "article": {
     "title": "岳陽樓記\n(全文)",
     "paragraphs": [

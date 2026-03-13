@@ -1,6 +1,13 @@
 {
   "unitId": "xunzi-quanxue",
-  "unitName": "勸學",
+  "unitName": "《勸學》荀子",
+"metadata": {
+  "category": "先秦諸子",
+  "author": "荀子",
+  "period": "戰國",
+  "difficulty": "基礎",
+  "tags": ["儒家", "教育", "學習", "比喻論證", "排比", "說理",  "DSE 指定"]
+},
   "article": {
     "title": "勸學\n(節錄)",
     "paragraphs": [
