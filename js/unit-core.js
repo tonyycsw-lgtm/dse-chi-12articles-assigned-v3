@@ -1,4 +1,3 @@
-//此檔案負責單元資料的本地儲存、管理、分類、篩選與匯入匯出，所有功能掛載在 window.DSEUnitCore 下
 // unit-core.js - DSE 單元核心管理模組
 (function(global) {
   'use strict';

@@ -81,10 +81,7 @@
   }
 
   function closeManagerModal() {
-    if (managerModal) {
-      managerModal.style.display = 'none';
-      refreshUnitSelect(); // 關閉管理對話框時刷新選單
-    }
+    if (managerModal) managerModal.style.display = 'none';
   }
 
   function refreshUnitsList() {
@@ -219,87 +216,53 @@
     select.innerHTML = '<option value="">請選擇課文</option>';
 
     let unitsToShow = [];
-    let hasAnyUnits = false;
 
-    // 1. 加入上傳的單元（來自 localStorage）- 這是唯一顯示的單元
-    const uploadedUnitsMap = core.getAllUnits();
-    const uploadedUnits = Object.entries(uploadedUnitsMap).map(([id, unit]) => ({
+    // 1. 加入上傳的單元（來自 localStorage）
+    const uploadedUnits = Object.entries(core.getAllUnits()).map(([id, unit]) => ({
       id,
       name: unit.name,
       data: unit.data,
       type: 'upload'
     }));
-    
-    if (uploadedUnits.length > 0) {
-      unitsToShow.push(...uploadedUnits);
-      hasAnyUnits = true;
-    }
+    unitsToShow.push(...uploadedUnits);
 
-    // 2. 索引單元已註解掉，不顯示在下拉選單中
-    // if (typeof unitsIndex !== 'undefined' && Array.isArray(unitsIndex) && unitsIndex.length > 0) {
-    //   const validIndexUnits = unitsIndex.filter(item => {
-    //     return item.unitId && item.unitName && item.dataUrl;
-    //   });
-    //   
-    //   if (validIndexUnits.length > 0) {
-    //     const indexUnits = validIndexUnits.map(item => ({
-    //       id: item.unitId,
-    //       name: item.unitName,
-    //       dataUrl: item.dataUrl,
-    //       type: 'index'
-    //     }));
-    //     unitsToShow.push(...indexUnits);
-    //     hasAnyUnits = true;
-    //   }
-    // }
+    // 2. 加入索引單元（來自全域 unitsIndex）
+    if (typeof unitsIndex !== 'undefined' && Array.isArray(unitsIndex)) {
+      const indexUnits = unitsIndex.map(item => ({
+        id: item.unitId,
+        name: item.unitName,
+        dataUrl: item.dataUrl,
+        type: 'index'
+      }));
+      unitsToShow.push(...indexUnits);
+    }
 
     // 3. 若有篩選條件，則過濾
-    if (filteredUnits && filteredUnits.length > 0) {
+    if (filteredUnits) {
       // filteredUnits 來自 core.filterUnits，只包含上傳單元
-      const filteredIds = new Set(filteredUnits.map(u => u.id));
-      
-      // 重新建構 unitsToShow：只包含符合條件的上傳單元
+      // 這裡我們簡單合併：僅顯示上傳單元中符合條件的 + 全部索引單元
+      // 若希望索引單元也參與篩選，需另外實作（可依需求擴充）
       unitsToShow = [
-        ...uploadedUnits.filter(u => filteredIds.has(u.id))
-        // 索引單元部分已註解掉
+        ...filteredUnits.map(u => ({ id: u.id, name: u.name, data: u.data, type: 'upload' })),
+        ...(typeof unitsIndex !== 'undefined' ? unitsIndex.map(item => ({ id: item.unitId, name: item.unitName, dataUrl: item.dataUrl, type: 'index' })) : [])
       ];
-      
-      if (unitsToShow.length > 0) {
-        hasAnyUnits = true;
-      }
-    }
-
-    // 如果完全沒有任何單元可顯示
-    if (!hasAnyUnits || unitsToShow.length === 0) {
-      select.innerHTML = '<option value="">沒有可用的課文</option>';
-      return;
     }
 
     // 依名稱排序
     unitsToShow.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
 
-    // 清除重複的 ID（防止意外情況）
-    const seenIds = new Set();
-    const uniqueUnitsToShow = unitsToShow.filter(item => {
-      if (seenIds.has(item.id)) {
-        console.warn('發現重複的單元 ID:', item.id);
-        return false;
-      }
-      seenIds.add(item.id);
-      return true;
-    });
-
-    uniqueUnitsToShow.forEach(item => {
+    unitsToShow.forEach(item => {
       const option = document.createElement('option');
       option.value = item.id;
       option.textContent = item.name;
       if (item.type === 'upload') {
         option.dataset.data = JSON.stringify(item.data); // 上傳單元直接儲存 data
+      } else {
+        option.dataset.url = item.dataUrl; // 索引單元儲存 dataUrl
       }
       select.appendChild(option);
     });
 
-    // 嘗試恢復之前選取的值
     if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
       select.value = currentValue;
     }
