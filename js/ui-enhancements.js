@@ -221,7 +221,7 @@
     let unitsToShow = [];
     let hasAnyUnits = false;
 
-    // 1. 加入上傳的單元（來自 localStorage）
+    // 1. 加入上傳的單元（來自 localStorage）- 這是唯一顯示的單元
     const uploadedUnitsMap = core.getAllUnits();
     const uploadedUnits = Object.entries(uploadedUnitsMap).map(([id, unit]) => ({
       id,
@@ -235,39 +235,33 @@
       hasAnyUnits = true;
     }
 
-    // 2. 加入索引單元（來自全域 unitsIndex）- 但需要驗證檔案是否真的存在
-    if (typeof unitsIndex !== 'undefined' && Array.isArray(unitsIndex) && unitsIndex.length > 0) {
-      // 過濾掉可能不存在的索引單元（這裡可以加入更多驗證）
-      const validIndexUnits = unitsIndex.filter(item => {
-        // 基本驗證：確保有必要的欄位
-        return item.unitId && item.unitName && item.dataUrl;
-      });
-      
-      if (validIndexUnits.length > 0) {
-        const indexUnits = validIndexUnits.map(item => ({
-          id: item.unitId,
-          name: item.unitName,
-          dataUrl: item.dataUrl,
-          type: 'index'
-        }));
-        unitsToShow.push(...indexUnits);
-        hasAnyUnits = true;
-      }
-    }
+    // 2. 索引單元已註解掉，不顯示在下拉選單中
+    // if (typeof unitsIndex !== 'undefined' && Array.isArray(unitsIndex) && unitsIndex.length > 0) {
+    //   const validIndexUnits = unitsIndex.filter(item => {
+    //     return item.unitId && item.unitName && item.dataUrl;
+    //   });
+    //   
+    //   if (validIndexUnits.length > 0) {
+    //     const indexUnits = validIndexUnits.map(item => ({
+    //       id: item.unitId,
+    //       name: item.unitName,
+    //       dataUrl: item.dataUrl,
+    //       type: 'index'
+    //     }));
+    //     unitsToShow.push(...indexUnits);
+    //     hasAnyUnits = true;
+    //   }
+    // }
 
     // 3. 若有篩選條件，則過濾
     if (filteredUnits && filteredUnits.length > 0) {
       // filteredUnits 來自 core.filterUnits，只包含上傳單元
       const filteredIds = new Set(filteredUnits.map(u => u.id));
       
-      // 重新建構 unitsToShow：只包含符合條件的上傳單元 + 所有索引單元
+      // 重新建構 unitsToShow：只包含符合條件的上傳單元
       unitsToShow = [
-        ...uploadedUnits.filter(u => filteredIds.has(u.id)),
-        ...(typeof unitsIndex !== 'undefined' && Array.isArray(unitsIndex) && unitsIndex.length > 0 
-            ? unitsIndex
-                .filter(item => item.unitId && item.unitName && item.dataUrl)
-                .map(item => ({ id: item.unitId, name: item.unitName, dataUrl: item.dataUrl, type: 'index' })) 
-            : [])
+        ...uploadedUnits.filter(u => filteredIds.has(u.id))
+        // 索引單元部分已註解掉
       ];
       
       if (unitsToShow.length > 0) {
@@ -301,8 +295,6 @@
       option.textContent = item.name;
       if (item.type === 'upload') {
         option.dataset.data = JSON.stringify(item.data); // 上傳單元直接儲存 data
-      } else {
-        option.dataset.url = item.dataUrl; // 索引單元儲存 dataUrl
       }
       select.appendChild(option);
     });
@@ -311,11 +303,8 @@
     if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
       select.value = currentValue;
     }
-    // 可選：如果之前的值不存在，但選單中有選項，可以選擇第一個
-    // else if (select.options.length > 1) {
-    //   select.value = select.options[1].value;
-    // }
   }
+
   function buildCategoryFilters() {
     const container = document.getElementById('filter-container');
     if (!container) return;
