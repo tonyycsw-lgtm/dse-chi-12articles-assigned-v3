@@ -210,7 +210,7 @@
     e.target.value = '';
   }
 
-  // ========== 整合拖放上傳的浮動面板 ==========
+  // ========== 整合拖放上傳的浮動面板（改良版：更小的字體和尺寸） ==========
   let uploadPanel = null;
 
   function createUploadPanel() {
@@ -224,51 +224,51 @@
       left: 50%;
       transform: translate(-50%, -50%);
       width: 90%;
-      max-width: 500px;
+      max-width: 450px;
       background: white;
-      border-radius: 16px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      border-radius: 12px;
+      box-shadow: 0 15px 30px rgba(0,0,0,0.2);
       z-index: 3000;
-      padding: 24px;
+      padding: 18px;
       display: none;
     `;
     panel.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h3 style="font-size: 20px; color: #1e293b;"><i class="fas fa-upload"></i> 上傳單元</h3>
-        <button id="close-upload-panel" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #64748b;">&times;</button>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-size: 16px; color: #1e293b; font-weight: 600;"><i class="fas fa-upload" style="margin-right: 6px;"></i>上傳單元</h3>
+        <button id="close-upload-panel" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b; line-height: 1;">&times;</button>
       </div>
       
-      <!-- 拖放區域 -->
+      <!-- 拖放區域（尺寸縮小） -->
       <div id="upload-drop-zone" style="
-        border: 3px dashed #cbd5e1;
-        border-radius: 12px;
-        padding: 40px 20px;
+        border: 2px dashed #cbd5e1;
+        border-radius: 8px;
+        padding: 20px 15px;
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 12px;
         background: #f8fafc;
         transition: all 0.2s;
         cursor: pointer;
       ">
-        <i class="fas fa-cloud-upload-alt fa-3x" style="color: #4f46e5; margin-bottom: 15px;"></i>
-        <p style="color: #475569; margin-bottom: 10px;">拖放 JSON 檔案到這裡</p>
-        <p style="color: #94a3b8; font-size: 14px;">或</p>
-        <button id="select-files-btn" class="btn" style="background: #4f46e5; color: white; margin-top: 10px; padding: 10px 20px;">
-          <i class="fas fa-folder-open"></i> 點擊選擇檔案
+        <i class="fas fa-cloud-upload-alt fa-2x" style="color: #4f46e5; margin-bottom: 8px;"></i>
+        <p style="color: #475569; font-size: 13px; margin-bottom: 6px;">拖放 JSON 檔案到這裡</p>
+        <p style="color: #94a3b8; font-size: 12px; margin-bottom: 8px;">或</p>
+        <button id="select-files-btn" class="btn" style="background: #4f46e5; color: white; padding: 6px 12px; font-size: 12px;">
+          <i class="fas fa-folder-open" style="font-size: 11px;"></i> 選擇檔案
         </button>
-        <p style="color: #94a3b8; font-size: 12px; margin-top: 15px;">支援 .json 格式，可多選</p>
+        <p style="color: #94a3b8; font-size: 11px; margin-top: 10px;">支援 .json 格式，可多選</p>
       </div>
 
-      <!-- 檔案列表 -->
-      <div id="upload-file-list" style="max-height: 200px; overflow-y: auto; margin-top: 10px; display: none;">
-        <h4 style="font-size: 14px; color: #1e293b; margin-bottom: 10px;">已選擇的檔案：</h4>
-        <div id="file-items"></div>
+      <!-- 檔案列表（更小的字體） -->
+      <div id="upload-file-list" style="max-height: 180px; overflow-y: auto; margin-bottom: 12px; display: none;">
+        <h4 style="font-size: 13px; color: #1e293b; margin-bottom: 8px; font-weight: 500;">已選擇的檔案：</h4>
+        <div id="file-items" style="font-size: 12px;"></div>
       </div>
 
-      <!-- 上傳按鈕 -->
-      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-        <button id="cancel-upload-btn" class="btn btn-outline">取消</button>
-        <button id="confirm-upload-btn" class="btn" style="background: #4f46e5; color: white;" disabled>
-          <i class="fas fa-upload"></i> 開始上傳
+      <!-- 上傳按鈕（縮小） -->
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button id="cancel-upload-btn" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;">取消</button>
+        <button id="confirm-upload-btn" class="btn" style="background: #4f46e5; color: white; padding: 6px 12px; font-size: 12px;" disabled>
+          <i class="fas fa-upload" style="font-size: 11px;"></i> 開始上傳
         </button>
       </div>
     `;
@@ -347,14 +347,16 @@
     const fileItems = document.getElementById('file-items');
     const confirmBtn = document.getElementById('confirm-upload-btn');
 
-    // 顯示檔案列表
+    // 顯示檔案列表（更小的字體和緊湊的間距）
     let html = '';
     files.forEach(file => {
       const size = (file.size / 1024).toFixed(2);
       html += `
-        <div style="display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #e2e8f0;">
-          <span><i class="fas fa-file-code" style="color: #4f46e5; margin-right: 8px;"></i>${file.name}</span>
-          <span style="color: #64748b; font-size: 12px;">${size} KB</span>
+        <div style="display: flex; justify-content: space-between; padding: 6px 4px; border-bottom: 1px solid #e2e8f0; font-size: 12px;">
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;">
+            <i class="fas fa-file-code" style="color: #4f46e5; margin-right: 6px; font-size: 11px;"></i>${file.name}
+          </span>
+          <span style="color: #64748b; font-size: 11px; margin-left: 8px;">${size} KB</span>
         </div>
       `;
     });
@@ -380,7 +382,7 @@
     }
   }
 
-  // ========== 下拉選單與分類篩選 ==========
+  // ========== 下拉選單與分類篩選（移除搜尋功能） ==========
   function refreshUnitSelect(filteredUnits = null) {
     const select = document.getElementById('unit-select');
     if (!select) return;
@@ -391,7 +393,7 @@
     let unitsToShow = [];
     let hasAnyUnits = false;
 
-    // 1. 加入上傳的單元（來自 localStorage）- 這是唯一顯示的單元
+    // 1. 加入上傳的單元（來自 localStorage）
     const uploadedUnitsMap = core.getAllUnits();
     const uploadedUnits = Object.entries(uploadedUnitsMap).map(([id, unit]) => ({
       id,
@@ -405,7 +407,7 @@
       hasAnyUnits = true;
     }
 
-    // 2. 若有篩選條件，則過濾
+    // 2. 若有篩選條件，則過濾（只保留分類和作者篩選）
     if (filteredUnits && filteredUnits.length > 0) {
       const filteredIds = new Set(filteredUnits.map(u => u.id));
       unitsToShow = uploadedUnits.filter(u => filteredIds.has(u.id));
@@ -424,7 +426,7 @@
     // 依名稱排序
     unitsToShow.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
 
-    // 清除重複的 ID（防止意外情況）
+    // 清除重複的 ID
     const seenIds = new Set();
     const uniqueUnitsToShow = unitsToShow.filter(item => {
       if (seenIds.has(item.id)) {
@@ -455,56 +457,42 @@
 
     const categories = core.getAllCategories();
     const authors = core.getAllAuthors();
-    const tags = core.getAllTags();
 
     let html = `
-      <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 15px; padding: 10px; background: #f8fafc; border-radius: 8px;">
-        <input type="text" id="search-input" placeholder="搜尋單元名稱或作者..." style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; flex: 1; min-width: 200px;">
-        <select id="category-filter" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; font-size: 12px;">
+        <select id="category-filter" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; min-width: 120px;">
           <option value="">所有分類</option>
           ${categories.map(c => `<option value="${c}">${c}</option>`).join('')}
         </select>
-        <select id="author-filter" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+        <select id="author-filter" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; min-width: 120px;">
           <option value="">所有作者</option>
           ${authors.map(a => `<option value="${a}">${a}</option>`).join('')}
         </select>
-        <select id="tag-filter" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
-          <option value="">所有標籤</option>
-          ${tags.map(t => `<option value="${t}">${t}</option>`).join('')}
-        </select>
-        <button id="clear-filters" class="btn btn-outline" style="padding: 8px 12px;">清除篩選</button>
+        <button id="clear-filters" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;">清除篩選</button>
       </div>
     `;
     container.innerHTML = html;
 
-    document.getElementById('search-input').addEventListener('input', applyFilters);
     document.getElementById('category-filter').addEventListener('change', applyFilters);
     document.getElementById('author-filter').addEventListener('change', applyFilters);
-    document.getElementById('tag-filter').addEventListener('change', applyFilters);
     document.getElementById('clear-filters').addEventListener('click', clearFilters);
   }
 
   function applyFilters() {
-    const searchText = document.getElementById('search-input')?.value || '';
     const category = document.getElementById('category-filter')?.value || '';
     const author = document.getElementById('author-filter')?.value || '';
-    const tag = document.getElementById('tag-filter')?.value || '';
 
     const criteria = {};
-    if (searchText) criteria.searchText = searchText;
     if (category) criteria.category = category;
     if (author) criteria.author = author;
-    if (tag) criteria.tag = tag;
 
     const filtered = core.filterUnits(criteria);
     refreshUnitSelect(filtered);
   }
 
   function clearFilters() {
-    document.getElementById('search-input').value = '';
     document.getElementById('category-filter').value = '';
     document.getElementById('author-filter').value = '';
-    document.getElementById('tag-filter').value = '';
     refreshUnitSelect();
   }
 
@@ -622,7 +610,6 @@
 
     const filterContainer = document.createElement('div');
     filterContainer.id = 'filter-container';
-    filterContainer.style.marginBottom = '15px';
     const controlBarParent = document.querySelector('.unit-control-bar');
     controlBarParent.parentNode.insertBefore(filterContainer, controlBarParent.nextSibling);
 
@@ -638,10 +625,7 @@
 
     document.getElementById('unit-select').addEventListener('change', function(e) {
       const selectedId = e.target.value;
-      if (selectedId) {
-        const unit = core.getUnit(selectedId);
-        // 不再更新預覽卡片
-      }
+      // 不再更新預覽卡片
     });
   }
 
