@@ -81,7 +81,10 @@
   }
 
   function closeManagerModal() {
-    if (managerModal) managerModal.style.display = 'none';
+    if (managerModal) {
+      managerModal.style.display = 'none';
+      refreshUnitSelect(); // 關閉管理對話框時刷新選單
+    }
   }
 
   function refreshUnitsList() {
@@ -207,7 +210,7 @@
     e.target.value = '';
   }
 
-  // ========== 下拉選單與分類篩選 ==========
+     // ========== 下拉選單與分類篩選 ==========
   function refreshUnitSelect(filteredUnits = null) {
     const select = document.getElementById('unit-select');
     if (!select) return;
@@ -226,8 +229,8 @@
     }));
     unitsToShow.push(...uploadedUnits);
 
-    // 2. 加入索引單元（來自全域 unitsIndex）
-    if (typeof unitsIndex !== 'undefined' && Array.isArray(unitsIndex)) {
+    // 2. 加入索引單元（來自全域 unitsIndex）- 但只有當 unitsIndex 存在且不為空時
+    if (typeof unitsIndex !== 'undefined' && Array.isArray(unitsIndex) && unitsIndex.length > 0) {
       const indexUnits = unitsIndex.map(item => ({
         id: item.unitId,
         name: item.unitName,
@@ -238,14 +241,22 @@
     }
 
     // 3. 若有篩選條件，則過濾
-    if (filteredUnits) {
+    if (filteredUnits && filteredUnits.length > 0) {
       // filteredUnits 來自 core.filterUnits，只包含上傳單元
-      // 這裡我們簡單合併：僅顯示上傳單元中符合條件的 + 全部索引單元
-      // 若希望索引單元也參與篩選，需另外實作（可依需求擴充）
+      // 我們只顯示符合條件的上傳單元，索引單元不參與篩選（保持全部顯示）
+      const filteredIds = new Set(filteredUnits.map(u => u.id));
       unitsToShow = [
-        ...filteredUnits.map(u => ({ id: u.id, name: u.name, data: u.data, type: 'upload' })),
-        ...(typeof unitsIndex !== 'undefined' ? unitsIndex.map(item => ({ id: item.unitId, name: item.unitName, dataUrl: item.dataUrl, type: 'index' })) : [])
+        ...uploadedUnits.filter(u => filteredIds.has(u.id)),
+        ...(typeof unitsIndex !== 'undefined' && Array.isArray(unitsIndex) && unitsIndex.length > 0 
+            ? unitsIndex.map(item => ({ id: item.unitId, name: item.unitName, dataUrl: item.dataUrl, type: 'index' })) 
+            : [])
       ];
+    }
+
+    // 如果完全沒有任何單元可顯示
+    if (unitsToShow.length === 0) {
+      select.innerHTML = '<option value="">沒有可用的課文</option>';
+      return;
     }
 
     // 依名稱排序
@@ -263,9 +274,14 @@
       select.appendChild(option);
     });
 
+    // 嘗試恢復之前選取的值
     if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
       select.value = currentValue;
     }
+    // 可選：如果之前的值不存在，但選單中有選項，可以選擇第一個
+    // else if (select.options.length > 1) {
+    //   select.value = select.options[1].value;
+    // }
   }
 
   function buildCategoryFilters() {
