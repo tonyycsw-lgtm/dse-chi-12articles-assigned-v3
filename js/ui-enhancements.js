@@ -98,7 +98,7 @@
     }
 
     let html = '<table style="width: 100%; border-collapse: collapse;">';
-    html += '<thead style="background: #f1f5f9;"><tr><th style="padding: 10px; width: 40px;"><input type="checkbox" id="check-all-top"></th><th style="padding: 10px; text-align: left;">單元名稱</th><th style="padding: 10px;">分類</th><th style="padding: 10px;">作者</th><th style="padding: 10px;">段落</th><th style="padding: 10px;">詞彙</th><th style="padding: 10px;">操作</th></tr></thead>';
+    html += '<thead style="background: #f1f5f9;"><tr><th style="padding: 10px; width: 40px;"><input type="checkbox" id="check-all-top"></th><th style="padding: 10px; text-align: left;">單元名稱</th><th style="padding: 10px;">分類</th><th style="padding: 10px;">作者</th><th style="padding: 10px;">時代</th><th style="padding: 10px;">難度</th><th style="padding: 10px;">段落</th><th style="padding: 10px;">詞彙</th><th style="padding: 10px;">操作</th></tr></thead>';
     html += '<tbody>';
 
     unitEntries.forEach(([id, unit]) => {
@@ -107,6 +107,16 @@
       html += `<td style="padding: 10px;"><span class="unit-name" data-id="${id}">${unit.name}</span> <button class="edit-unit-name-btn" data-id="${id}" style="border: none; background: none; color: #4f46e5; cursor: pointer;"><i class="fas fa-pencil-alt"></i></button></td>`;
       html += `<td style="padding: 10px;">${unit.metadata?.category || '未分類'}</td>`;
       html += `<td style="padding: 10px;">${unit.metadata?.author || ''}</td>`;
+      html += `<td style="padding: 10px;">${unit.metadata?.period || ''}</td>`;
+      html += `<td style="padding: 10px;"><span class="difficulty-badge" style="padding: 2px 8px; border-radius: 12px; font-size: 11px; background-color: ${
+        unit.metadata?.difficulty === '基礎' ? '#e6f7e6' : 
+        unit.metadata?.difficulty === '中階' ? '#fff3e0' : 
+        unit.metadata?.difficulty === '進階' ? '#fce4e4' : '#f1f5f9'
+      }; color: ${
+        unit.metadata?.difficulty === '基礎' ? '#2e7d32' : 
+        unit.metadata?.difficulty === '中階' ? '#b85e00' : 
+        unit.metadata?.difficulty === '進階' ? '#c62828' : '#475569'
+      };">${unit.metadata?.difficulty || '未指定'}</span></td>`;
       html += `<td style="padding: 10px; text-align: center;">${unit.metadata?.paragraphCount || 0}</td>`;
       html += `<td style="padding: 10px; text-align: center;">${unit.metadata?.vocabCount || 0}</td>`;
       html += `<td style="padding: 10px;"><button class="delete-unit-btn" data-id="${id}" style="border: none; background: none; color: #dc2626; cursor: pointer;"><i class="fas fa-trash"></i></button></td>`;
@@ -210,7 +220,7 @@
     e.target.value = '';
   }
 
-  // ========== 整合拖放上傳的浮動面板（改良版：更小的字體和尺寸） ==========
+  // ========== 整合拖放上傳的浮動面板 ==========
   let uploadPanel = null;
 
   function createUploadPanel() {
@@ -238,7 +248,6 @@
         <button id="close-upload-panel" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b; line-height: 1;">&times;</button>
       </div>
       
-      <!-- 拖放區域（尺寸縮小） -->
       <div id="upload-drop-zone" style="
         border: 2px dashed #cbd5e1;
         border-radius: 8px;
@@ -258,13 +267,11 @@
         <p style="color: #94a3b8; font-size: 11px; margin-top: 10px;">支援 .json 格式，可多選</p>
       </div>
 
-      <!-- 檔案列表（更小的字體） -->
       <div id="upload-file-list" style="max-height: 180px; overflow-y: auto; margin-bottom: 12px; display: none;">
         <h4 style="font-size: 13px; color: #1e293b; margin-bottom: 8px; font-weight: 500;">已選擇的檔案：</h4>
         <div id="file-items" style="font-size: 12px;"></div>
       </div>
 
-      <!-- 上傳按鈕（縮小） -->
       <div style="display: flex; justify-content: flex-end; gap: 8px;">
         <button id="cancel-upload-btn" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;">取消</button>
         <button id="confirm-upload-btn" class="btn" style="background: #4f46e5; color: white; padding: 6px 12px; font-size: 12px;" disabled>
@@ -276,16 +283,13 @@
     document.body.appendChild(panel);
     uploadPanel = panel;
 
-    // 關閉按鈕
     document.getElementById('close-upload-panel').addEventListener('click', closeUploadPanel);
     document.getElementById('cancel-upload-btn').addEventListener('click', closeUploadPanel);
 
-    // 點擊背景關閉
     panel.addEventListener('click', (e) => {
       if (e.target === panel) closeUploadPanel();
     });
 
-    // 拖放區域點擊選擇檔案
     const dropZone = document.getElementById('upload-drop-zone');
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
@@ -296,7 +300,6 @@
 
     dropZone.addEventListener('click', () => fileInput.click());
 
-    // 拖放事件
     dropZone.addEventListener('dragover', (e) => {
       e.preventDefault();
       dropZone.style.background = '#eef2ff';
@@ -321,16 +324,14 @@
       }
     });
 
-    // 檔案選擇事件
     fileInput.addEventListener('change', (e) => {
       const files = Array.from(e.target.files);
       if (files.length > 0) {
         handleSelectedFiles(files);
       }
-      fileInput.value = ''; // 清除，允許重新選擇相同檔案
+      fileInput.value = '';
     });
 
-    // 確認上傳按鈕
     document.getElementById('confirm-upload-btn').addEventListener('click', () => {
       if (window.pendingFiles && window.pendingFiles.length > 0) {
         handleMultipleFilesUpload(window.pendingFiles);
@@ -347,7 +348,6 @@
     const fileItems = document.getElementById('file-items');
     const confirmBtn = document.getElementById('confirm-upload-btn');
 
-    // 顯示檔案列表（更小的字體和緊湊的間距）
     let html = '';
     files.forEach(file => {
       const size = (file.size / 1024).toFixed(2);
@@ -368,7 +368,6 @@
   function openUploadPanel() {
     if (!uploadPanel) createUploadPanel();
     
-    // 重置狀態
     window.pendingFiles = [];
     document.getElementById('upload-file-list').style.display = 'none';
     document.getElementById('confirm-upload-btn').disabled = true;
@@ -382,7 +381,7 @@
     }
   }
 
-  // ========== 下拉選單與分類篩選（移除搜尋功能） ==========
+  // ========== 下拉選單與完整分類篩選 ==========
   function refreshUnitSelect(filteredUnits = null) {
     const select = document.getElementById('unit-select');
     if (!select) return;
@@ -393,7 +392,6 @@
     let unitsToShow = [];
     let hasAnyUnits = false;
 
-    // 1. 加入上傳的單元（來自 localStorage）
     const uploadedUnitsMap = core.getAllUnits();
     const uploadedUnits = Object.entries(uploadedUnitsMap).map(([id, unit]) => ({
       id,
@@ -407,7 +405,6 @@
       hasAnyUnits = true;
     }
 
-    // 2. 若有篩選條件，則過濾（只保留分類和作者篩選）
     if (filteredUnits && filteredUnits.length > 0) {
       const filteredIds = new Set(filteredUnits.map(u => u.id));
       unitsToShow = uploadedUnits.filter(u => filteredIds.has(u.id));
@@ -417,16 +414,13 @@
       }
     }
 
-    // 如果完全沒有任何單元可顯示
     if (!hasAnyUnits || unitsToShow.length === 0) {
       select.innerHTML = '<option value="">沒有可用的課文</option>';
       return;
     }
 
-    // 依名稱排序
     unitsToShow.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
 
-    // 清除重複的 ID
     const seenIds = new Set();
     const uniqueUnitsToShow = unitsToShow.filter(item => {
       if (seenIds.has(item.id)) {
@@ -445,58 +439,127 @@
       select.appendChild(option);
     });
 
-    // 嘗試恢復之前選取的值
     if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
       select.value = currentValue;
     }
   }
 
+  // ========== 完整篩選 UI ==========
   function buildCategoryFilters() {
     const container = document.getElementById('filter-container');
     if (!container) return;
 
     const categories = core.getAllCategories();
     const authors = core.getAllAuthors();
+    const periods = core.getAllPeriods ? core.getAllPeriods() : [];
+    const difficulties = core.getAllDifficulties ? core.getAllDifficulties() : [];
+    const tags = core.getAllTags ? core.getAllTags() : [];
+
+    // 計算符合條件的課文數量
+    const updateResultCount = () => {
+      const count = document.querySelectorAll('#unit-select option').length - 1; // 減去「請選擇課文」
+      let countEl = document.getElementById('filter-result-count');
+      if (!countEl) {
+        countEl = document.createElement('span');
+        countEl.id = 'filter-result-count';
+        countEl.style.marginLeft = 'auto';
+        countEl.style.fontSize = '12px';
+        countEl.style.color = '#64748b';
+        document.querySelector('#filter-container > div').appendChild(countEl);
+      }
+      countEl.textContent = `找到 ${count} 篇課文`;
+    };
 
     let html = `
-      <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; font-size: 12px;">
-        <select id="category-filter" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; min-width: 120px;">
-          <option value="">所有分類</option>
-          ${categories.map(c => `<option value="${c}">${c}</option>`).join('')}
-        </select>
-        <select id="author-filter" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; min-width: 120px;">
-          <option value="">所有作者</option>
-          ${authors.map(a => `<option value="${a}">${a}</option>`).join('')}
-        </select>
-        <button id="clear-filters" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;">清除篩選</button>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 12px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; flex: 1;">
+          <select id="category-filter" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; min-width: 100px;">
+            <option value="">所有分類</option>
+            ${categories.map(c => `<option value="${c}">${c}</option>`).join('')}
+          </select>
+          
+          <select id="author-filter" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; min-width: 100px;">
+            <option value="">所有作者</option>
+            ${authors.map(a => `<option value="${a}">${a}</option>`).join('')}
+          </select>
+          
+          <select id="period-filter" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; min-width: 100px;">
+            <option value="">所有時代</option>
+            ${periods.map(p => `<option value="${p}">${p}</option>`).join('')}
+          </select>
+          
+          <select id="difficulty-filter" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; min-width: 100px;">
+            <option value="">所有難度</option>
+            ${difficulties.map(d => `<option value="${d}">${d}</option>`).join('')}
+          </select>
+          
+          <select id="tag-filter" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; min-width: 120px;">
+            <option value="">所有標籤</option>
+            ${tags.map(t => `<option value="${t}">${t}</option>`).join('')}
+          </select>
+        </div>
+        
+        <button id="clear-filters" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; white-space: nowrap;">
+          <i class="fas fa-times"></i> 清除篩選
+        </button>
       </div>
     `;
+    
     container.innerHTML = html;
 
+    // 綁定事件
     document.getElementById('category-filter').addEventListener('change', applyFilters);
     document.getElementById('author-filter').addEventListener('change', applyFilters);
+    document.getElementById('period-filter').addEventListener('change', applyFilters);
+    document.getElementById('difficulty-filter').addEventListener('change', applyFilters);
+    document.getElementById('tag-filter').addEventListener('change', applyFilters);
     document.getElementById('clear-filters').addEventListener('click', clearFilters);
+
+    // 初始化結果數量
+    setTimeout(updateResultCount, 100);
   }
 
   function applyFilters() {
     const category = document.getElementById('category-filter')?.value || '';
     const author = document.getElementById('author-filter')?.value || '';
+    const period = document.getElementById('period-filter')?.value || '';
+    const difficulty = document.getElementById('difficulty-filter')?.value || '';
+    const tag = document.getElementById('tag-filter')?.value || '';
 
     const criteria = {};
     if (category) criteria.category = category;
     if (author) criteria.author = author;
+    if (period) criteria.period = period;
+    if (difficulty) criteria.difficulty = difficulty;
+    if (tag) criteria.tag = tag;
 
     const filtered = core.filterUnits(criteria);
     refreshUnitSelect(filtered);
+
+    // 更新結果數量
+    const countEl = document.getElementById('filter-result-count');
+    if (countEl) {
+      countEl.textContent = `找到 ${filtered.length} 篇課文`;
+    }
   }
 
   function clearFilters() {
     document.getElementById('category-filter').value = '';
     document.getElementById('author-filter').value = '';
+    document.getElementById('period-filter').value = '';
+    document.getElementById('difficulty-filter').value = '';
+    document.getElementById('tag-filter').value = '';
+    
     refreshUnitSelect();
+
+    const countEl = document.getElementById('filter-result-count');
+    if (countEl) {
+      const allUnits = core.getAllUnits();
+      countEl.textContent = `找到 ${Object.keys(allUnits).length} 篇課文`;
+    }
   }
 
-  // ========== 多檔案上處理（支援備份檔案） ==========
+  // ========== 多檔案上傳處理 ==========
   function handleMultipleFilesUpload(files) {
     const select = document.getElementById('unit-select');
     let successCount = 0;
@@ -508,12 +571,9 @@
         try {
           const parsedData = JSON.parse(ev.target.result);
           
-          // 情況1：備份檔案格式（有 units 欄位）
           if (parsedData.units && parsedData.version === '1.0') {
-            // 這是備份檔案，處理其中的每個單元
             const unitEntries = Object.entries(parsedData.units);
             unitEntries.forEach(([unitId, unitData]) => {
-              // 檢查是否有 data 欄位且包含 article 和 vocabulary
               if (unitData.data && unitData.data.article && unitData.data.vocabulary) {
                 const uniqueName = core.getUniqueUnitName(unitData.name);
                 const newUnitId = core.generateUnitId(unitData.name);
@@ -527,7 +587,6 @@
               }
             });
           } 
-          // 情況2：單一課文檔案格式（直接有 article 和 vocabulary）
           else if (parsedData.article && parsedData.vocabulary) {
             const baseName = parsedData.unitName || file.name.replace('.json', '');
             const uniqueName = core.getUniqueUnitName(baseName);
@@ -537,12 +596,10 @@
             core.addUnit(unitId, uniqueName, parsedData, metadata);
             successCount++;
           }
-          // 情況3：未知格式
           else {
             throw new Error('無法識別的檔案格式：缺少 article/vocabulary 或不是有效的備份檔');
           }
 
-          // 所有檔案處理完成後顯示結果
           if (successCount + errorCount === files.length) {
             const message = `處理完成：${successCount} 個成功，${errorCount} 個失敗`;
             console.log(message);
@@ -550,9 +607,7 @@
             
             refreshUnitSelect();
             
-            // 如果只有一個檔案且成功，自動選取
             if (files.length === 1 && successCount === 1) {
-              // 找出最新加入的單元（最後一個）
               const allUnits = core.getAllUnits();
               const latestUnitId = Object.keys(allUnits).sort((a, b) => allUnits[b].timestamp - allUnits[a].timestamp)[0];
               if (latestUnitId) {
@@ -560,13 +615,15 @@
                 select.dispatchEvent(new Event('change'));
               }
             }
+            
+            // 更新篩選選單
+            buildCategoryFilters();
           }
         } catch (ex) {
           errorCount++;
           console.error(`解析檔案 ${file.name} 失敗：`, ex);
           alert(`解析檔案 ${file.name} 失敗：${ex.message}`);
           
-          // 仍然檢查是否所有檔案都處理完
           if (successCount + errorCount === files.length) {
             alert(`處理完成：${successCount} 個成功，${errorCount} 個失敗`);
             refreshUnitSelect();
@@ -590,7 +647,6 @@
   function initUI() {
     const controlBar = document.querySelector('.unit-control-bar .unit-selector-wrapper');
     if (controlBar) {
-      // 修改上傳按鈕行為
       const uploadBtn = document.querySelector('.upload-btn');
       if (uploadBtn) {
         uploadBtn.addEventListener('click', (e) => {
@@ -599,7 +655,6 @@
         });
       }
 
-      // 加入管理按鈕
       const manageBtn = document.createElement('button');
       manageBtn.className = 'btn btn-outline';
       manageBtn.id = 'manage-units-btn';
@@ -615,18 +670,12 @@
 
     buildCategoryFilters();
 
-    // 隱藏原本的檔案輸入
     const originalUpload = document.getElementById('unit-upload');
     if (originalUpload) {
       originalUpload.style.display = 'none';
     }
 
     refreshUnitSelect();
-
-    document.getElementById('unit-select').addEventListener('change', function(e) {
-      const selectedId = e.target.value;
-      // 不再更新預覽卡片
-    });
   }
 
   if (document.readyState === 'loading') {
@@ -640,6 +689,8 @@
     openManagerModal,
     closeManagerModal,
     openUploadPanel,
-    closeUploadPanel
+    closeUploadPanel,
+    applyFilters,
+    clearFilters
   };
 })(window);

@@ -129,19 +129,50 @@
     return Array.from(tags).sort();
   }
 
+  // ========== 新增：獲取所有時代 ==========
+  function getAllPeriods() {
+    const periods = new Set();
+    Object.values(units).forEach(unit => {
+      if (unit.metadata?.period) periods.add(unit.metadata.period);
+    });
+    return Array.from(periods).sort();
+  }
+
+  // ========== 新增：獲取所有難度 ==========
+  function getAllDifficulties() {
+    const difficulties = new Set();
+    Object.values(units).forEach(unit => {
+      if (unit.metadata?.difficulty) difficulties.add(unit.metadata.difficulty);
+    });
+    return Array.from(difficulties).sort();
+  }
+
   function filterUnits(criteria = {}) {
-    // criteria: { category, author, difficulty, tag, searchText }
+    // criteria: { category, author, period, difficulty, tag, searchText }
     return Object.entries(units).filter(([id, unit]) => {
+      // 分類篩選
       if (criteria.category && unit.metadata?.category !== criteria.category) return false;
+      
+      // 作者篩選
       if (criteria.author && unit.metadata?.author !== criteria.author) return false;
+      
+      // 時代篩選
+      if (criteria.period && unit.metadata?.period !== criteria.period) return false;
+      
+      // 難度篩選
       if (criteria.difficulty && unit.metadata?.difficulty !== criteria.difficulty) return false;
+      
+      // 標籤篩選
       if (criteria.tag && !(unit.metadata?.tags || []).includes(criteria.tag)) return false;
+      
+      // 文字搜尋
       if (criteria.searchText) {
         const text = criteria.searchText.toLowerCase();
         return unit.name.toLowerCase().includes(text) || 
                (unit.metadata?.author || '').toLowerCase().includes(text) ||
                (unit.data?.article?.title || '').toLowerCase().includes(text);
       }
+      
       return true;
     }).map(([id, unit]) => ({ id, ...unit }));
   }
@@ -190,6 +221,7 @@
     // 儲存管理
     loadFromStorage,
     saveToStorage,
+    
     // 單元管理
     getAllUnits,
     getUnit,
@@ -200,11 +232,15 @@
     generateUnitId,
     getUniqueUnitName,
     extractMetadata,
-    // 分類
+    
+    // 分類篩選
     getAllCategories,
     getAllAuthors,
     getAllTags,
+    getAllPeriods,      // 新增
+    getAllDifficulties, // 新增
     filterUnits,
+    
     // 匯入匯出
     exportAllUnits,
     exportSelectedUnits,
