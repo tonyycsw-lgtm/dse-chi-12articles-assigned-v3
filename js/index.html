@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <title>DSE指定篇章</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* 原有樣式保持不變 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Segoe UI", "Helvetica Neue", "Arial", "Microsoft YaHei", sans-serif;
+    }
+    body {
+      padding: 20px 20px 20px 0;
+      background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
+      line-height: 1.6;
+      color: #2d3748;
+      min-height: 100vh;
+      display: flex;
+      justify-content: flex-end;
+    }
+    [lang="zh"] {
+      letter-spacing: 0.2em;
+      line-height: 1.9;
+      font-weight: 400;
+      word-spacing: 0.1em;
+    }
+    .article-title[lang="zh"] {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a365d;
+      margin-bottom: 10px;
+      text-align: center;
+      white-space: pre-line;
+      line-height: 2.0;
+      letter-spacing: 0.25em;
+    }
+    .sentence-slice {
+      line-height: 2.0;
+      letter-spacing: 0.2em;
+      font-weight: 400;
+      transition: background-color 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      border-radius: 4px;
+      padding: 2px 0;
+      white-space: nowrap;
+    }
+    .sentence-slice:hover,
+    .sentence-slice.sentence-selected,
+    .sentence-slice.playing {
+      background-color: rgba(79, 70, 229, 0.12);
+      box-shadow: 0 1px 4px rgba(79, 70, 229, 0.1);
+    }
+    .translation-sentence {
+      transition: background-color 0.2s, box-shadow 0.2s;
+      border-radius: 4px;
+      padding: 2px 0;
+      cursor: default;
+    }
+    .translation-sentence:hover,
+    .translation-sentence.translation-highlight {
+      background-color: rgba(79, 70, 229, 0.12);
+      box-shadow: 0 1px 4px rgba(79, 70, 229, 0.1);
+    }
+    .btn[lang="zh"] {
+      letter-spacing: 0.18em;
+      line-height: 1.6;
+    }
+    .section-title[lang="zh"] {
+      line-height: 2.0;
+      letter-spacing: 0.2em;
+    }
+    .unit-control-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 12px 16px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      border: 1px solid #e9ecef;
+    }
+    .unit-selector-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .unit-select {
+      padding: 8px 16px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #2d3748;
+      background-color: white;
+      cursor: pointer;
+      min-width: 280px;
+    }
+    .upload-btn {
+      background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+    .main-content {
+      width: calc(100% - 420px);
+      max-width: 210mm;
+      margin-right: 400px;
+      margin-left: 20px;
+    }
+    .a4-container {
+      width: 100%;
+      min-height: 297mm;
+      padding: 20mm;
+      background-color: white;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.04);
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+      overflow: visible;
+    }
+    .article-section {
+      width: 100%;
+    }
+    .article-paragraph-wrapper {
+      border: 1px solid #e2e8f0;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #2d3748;
+      text-align: justify;
+      background-color: #fcfdfe;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+    .single-paragraph {
+      margin-bottom: 12px;
+    }
+    .fixed-tooltip {
+      position: fixed;
+      top: 100px;
+      right: 30px;
+      width: 360px;
+      background: #ffffff;
+      border: 1px solid #e9ecef;
+      box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.05);
+      border-radius: 20px;
+      padding: 20px;
+      font-size: 13px;
+      line-height: 1.7;
+      color: #0f172a;
+      z-index: 1000;
+      transition: opacity 0.2s;
+      opacity: 0;
+      pointer-events: none;
+      max-height: calc(100vh - 140px);
+      overflow-y: auto;
+    }
+    .fixed-tooltip.show {
+      opacity: 1;
+    }
+    .fixed-tooltip .phrase {
+      color: #1e40af;
+      font-weight: 600;
+      margin-bottom: 12px;
+      background-color: #f0f9ff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border-left: 4px solid #3b82f6;
+    }
+    .fixed-tooltip .vocab-list {
+      margin-top: 8px;
+      border-top: 1px dashed #d1d5db;
+      padding-top: 8px;
+    }
+    .fixed-tooltip .vocab-item {
+      margin-bottom: 4px;
+    }
+    .footnotes-section {
+      margin: 16px 0 24px;
+      padding: 12px 16px;
+      background-color: #f8fafc;
+      border-radius: 8px;
+      border-left: 4px solid #4f46e5;
+      font-size: 12px;
+    }
+    .footnotes-section h5 {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1e40af;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .footnotes-section ol {
+      padding-left: 20px;
+      margin: 0;
+      list-style-type: decimal;
+    }
+    .footnotes-section li {
+      margin-bottom: 6px;
+      color: #2d3748;
+      line-height: 1.6;
+    }
+    .footnotes-section li strong {
+      color: #4f46e5;
+      font-weight: 600;
+      margin-right: 4px;
+    }
+    .footnotes-section li .context {
+      display: inline;
+      font-size: 11px;
+      color: #6b7280;
+      margin-left: 6px;
+      font-style: italic;
+      border-left: none;
+      padding-left: 0;
+    }
+    .paragraph-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin: 12px 0 8px;
+    }
+    .btn {
+      border: none;
+      font-size: 11px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.25s;
+      font-weight: 500;
+    }
+    .btn-outline {
+      background: transparent;
+      color: #4f46e5;
+      border: 1.5px solid #c7d2fe;
+    }
+    .btn-outline:hover {
+      background: #f1f5f9;
+      border-color: #4f46e5;
+    }
+    .btn-outline.playing {
+      background: #ef4444;
+      color: white;
+      border-color: #ef4444;
+    }
+    .btn-outline.active {
+      background: #4f46e5;
+      color: white;
+      border-color: #4f46e5;
+    }
+    .toggle-button-group {
+      display: inline-flex;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1.5px solid #c7d2fe;
+      background: white;
+    }
+    .toggle-button-group .btn {
+      margin: 0 !important;
+      border-radius: 0;
+      border: none;
+      border-right: 1.5px solid #c7d2fe;
+      background: transparent;
+      color: #4f46e5;
+      padding: 6px 12px;
+      font-size: 11px;
+    }
+    .toggle-button-group .btn:last-child {
+      border-right: none;
+    }
+    .toggle-button-group .btn.active {
+      background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+      color: white;
+      border-color: #4f46e5;
+    }
+    .unified-content {
+      margin-top: 12px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .unified-content .translation-content {
+      margin: 0;
+      padding: 16px;
+      background-color: #f0f9ff;
+      border-left: 4px solid #3b82f6;
+      color: #1e40af;
+      font-size: 12px;
+      line-height: 1.8;
+      letter-spacing: 0.18em;
+      border-radius: 0 6px 6px 0;
+      display: block;
+    }
+    .unified-content .implication-content {
+      margin: 0;
+      padding: 16px;
+      background-color: #fefce8;
+      border-left: 4px solid #f59e0b;
+      color: #92400e;
+      font-size: 12px;
+      display: none;
+      border-radius: 0 6px 6px 0;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .unified-content .implication-content .section-content {
+      padding-left: 0;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 12px 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0 10px 16px;
+      border-left: 4px solid;
+      background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.8));
+      border-radius: 0 6px 6px 0;
+    }
+    .appreciation-title { border-color: #8b5cf6; color: #6d28d9; }
+    .key-points-title { border-color: #059669; color: #065f46; }
+    .short-answer-title { border-color: #d97706; color: #b45309; }
+    .title-icon {
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: white;
+    }
+    .interactive-section {
+      margin-top: 20px;
+      margin-bottom: 30px;
+      padding: 18px;
+      background: white;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      position: relative;
+    }
+    .appreciation-content, .key-points-content, .short-answer-content {
+      font-size: 13px;
+      line-height: 1.9;
+      color: #2d3748;
+    }
+    .appreciation-section {
+      margin-bottom: 20px;
+    }
+    .appreciation-section h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #6d28d9;
+      margin-bottom: 8px;
+    }
+    .appreciation-section p {
+      margin-bottom: 12px;
+      padding-left: 12px;
+      border-left: 3px solid #e2e8f0;
+    }
+    .key-points-content .point-item, .short-answer-content .qa-item {
+      margin-bottom: 16px;
+      padding-left: 12px;
+      border-left: 3px solid #e2e8f0;
+    }
+    .key-points-content .point-item strong, .short-answer-content .qa-item strong {
+      color: #4f46e5;
+      font-weight: 600;
+      display: inline-block;
+      min-width: 80px;
+    }
+    .qa-item .question {
+      font-weight: 600;
+      color: #b45309;
+    }
+    .qa-item .answer {
+      margin-top: 4px;
+      color: #2d3748;
+    }
+    .spacer {
+      height: 50px;
+    }
+    .grammar-techniques {
+      margin-top: 8px;
+    }
+    .technique-item {
+      margin-bottom: 10px;
+      border-bottom: 1px dashed #e2e8f0;
+      padding-bottom: 8px;
+    }
+    .technique-item:last-child {
+      border-bottom: none;
+    }
+    .technique-type {
+      font-weight: 700;
+      color: #b45309;
+      display: inline-block;
+      background: #fef3c7;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+    .technique-example {
+      font-style: italic;
+      color: #6b7280;
+      background: #f9fafb;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin: 4px 0;
+      font-size: 11px;
+    }
+    .technique-effect {
+      font-size: 11px;
+      color: #374151;
+    }
+
+    /* ========== 響應式設計：更精細的控制 ========== */
+    @media screen and (min-width: 1201px) {
+      .fixed-tooltip {
+        display: block;
+        right: 30px;
+        width: 360px;
+      }
+    }
+    @media screen and (min-width: 769px) and (max-width: 1200px) {
+      .fixed-tooltip {
+        display: block;
+        right: 15px;
+        width: 300px;
+        font-size: 12px;
+        top: 80px;
+      }
+      .main-content {
+        width: calc(100% - 340px);
+        margin-right: 330px;
+      }
+    }
+    @media screen and (max-width: 768px) {
+      body {
+        justify-content: center;
+      }
+      .main-content {
+        width: 100%;
+        margin-right: 0;
+        margin-left: 0;
+      }
+      .fixed-tooltip {
+        display: none;
+      }
+    }
+  </style>
+  <!-- 新增：核心管理模組與 UI 增強模組 -->
+  <script src="js/unit-core.js"></script>
+  <script src="js/ui-enhancements.js"></script>
+</head>
+<body>
+<div class="main-content">
+  <div class="unit-control-bar">
+    <div class="unit-selector-wrapper">
+      <label for="unit-select"><i class="fas fa-book-open"></i> 選擇篇章：</label>
+      <select id="unit-select" class="unit-select">
+        <option value="">載入索引中…</option>
+      </select>
+    </div>
+    <div class="upload-wrapper">
+      <label for="unit-upload" class="btn btn-outline upload-btn"><i class="fas fa-upload"></i> 上傳單元</label>
+      <input type="file" id="unit-upload" accept="application/json" style="display:none;" multiple>
+    </div>
+  </div>
+
+  <div class="a4-container" id="a4-container">
+    <div class="article-section" id="article-section"></div>
+
+    <!-- 文章賞析 (動態載入) -->
+    <h2 class="section-title appreciation-title" lang="zh"><span class="title-icon"><i class="fas fa-feather-alt"></i></span> 文章賞析</h2>
+    <div class="interactive-section" id="appreciation-section">
+      <div class="appreciation-content" id="appreciation-content"></div>
+    </div>
+
+    <!-- 課文重點 (動態載入) -->
+    <h2 class="section-title key-points-title" lang="zh"><span class="title-icon"><i class="fas fa-star"></i></span> 課文重點</h2>
+    <div class="interactive-section" id="key-points-section">
+      <div class="key-points-content" id="key-points-content"></div>
+    </div>
+
+    <!-- 簡答題 -->
+    <h2 class="section-title short-answer-title" lang="zh"><span class="title-icon"><i class="fas fa-question-circle"></i></span> 簡答題</h2>
+    <div class="interactive-section" id="short-answer-section">
+      <div class="short-answer-content" id="short-answer-content"></div>
+    </div>
+    <div class="spacer"></div>
+  </div>
+</div>
+
+<div id="fixed-tooltip" class="fixed-tooltip"></div>
+
+<script>
+  // 全域變數 - 已修復：加入 window.sliceContents 同步
+  let currentUnitData = null;
+  let unitsIndex = [];
+  let sliceContents = {}; // 儲存所有切片的資訊 (key: paraNum-sliceId, value: slice object)
+  window.sliceContents = sliceContents; // 讓全域可以訪問
+
+  // TTS 功能 - 事件驅動版
+  const TTSController = {
+    isSupported() {
+      return 'speechSynthesis' in window;
+    },
+
+    getCantoneseVoice() {
+      if (!this.isSupported()) return null;
+      const voices = window.speechSynthesis.getVoices();
+      let voice = voices.find(v => 
+        v.lang.includes('zh-HK') || 
+        v.lang.includes('yue') || 
+        (v.lang.includes('zh') && v.lang.includes('HK'))
+      );
+      if (!voice) {
+        voice = voices.find(v => 
+          v.lang.includes('zh-CN') || 
+          v.lang.includes('zh-TW') || 
+          v.lang.includes('zh')
+        );
+      }
+      return voice;
+    },
+
+    // 使用 TTS 朗讀文字，支援回呼
+    speak(text, callback) {
+      if (!this.isSupported()) {
+        console.log('瀏覽器不支援 TTS');
+        if (callback) callback();
+        return;
+      }
+      
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'zh-HK';
+      utterance.rate = 0.7;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      const voice = this.getCantoneseVoice();
+      if (voice) utterance.voice = voice;
+
+      utterance.onend = () => {
+        if (callback) callback();
+      };
+
+      utterance.onerror = (event) => {
+        console.log('TTS 播放失敗:', event);
+        if (callback) callback(); // 即使失敗也繼續
+      };
+
+      window.speechSynthesis.speak(utterance);
+    },
+
+    stop() {
+      if (this.isSupported()) {
+        window.speechSynthesis.cancel();
+      }
+    }
+  };
+
+  // 音頻播放控制 - 事件驅動版 (已改進：同步高亮翻譯)
+  const AudioController = {
+    currentAudio: null,
+    currentButton: null,
+    currentPlayingSlice: null,
+    currentPlayingTranslation: null, // 新增：記錄當前高亮的翻譯
+    currentPlaylist: [], // 段落播放列表 [{audio: './audio/...', sliceEl: element, paraNum, sliceId, text}]
+    currentPlaylistIndex: -1,
+    isPlayingParagraph: false,
+    ttsPlaying: false, // 防止 TTS 重複播放
+
+    // 重置按鈕狀態
+    resetButton(btn) {
+      if (!btn) return;
+      btn.classList.remove('playing', 'loading');
+      if (btn.classList.contains('paragraph-audio-btn')) {
+        btn.innerHTML = '<i class="fas fa-volume-up"></i> 朗讀';
+      } else if (btn.classList.contains('vocab-audio-btn')) {
+        btn.innerHTML = '<i class="fas fa-volume-up"></i>';
+      } else {
+        btn.innerHTML = btn.innerHTML.includes('朗讀') ? '<i class="fas fa-volume-up"></i> 朗讀' : '<i class="fas fa-play"></i>';
+      }
+    },
+
+    // 停止所有播放
+    stop() {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      
+      if (this.currentAudio) {
+        this.currentAudio.pause();
+        this.currentAudio.currentTime = 0;
+        this.currentAudio = null;
+      }
+
+      if (this.currentButton) {
+        this.resetButton(this.currentButton);
+        this.currentButton = null;
+      }
+
+      // 移除所有原文高亮
+      document.querySelectorAll('.sentence-slice.playing').forEach(el => {
+        el.classList.remove('playing');
+      });
+
+      // 移除所有翻譯高亮
+      document.querySelectorAll('.translation-sentence.translation-highlight').forEach(el => {
+        el.classList.remove('translation-highlight');
+      });
+
+      this.currentPlayingSlice = null;
+      this.currentPlayingTranslation = null;
+      this.currentPlaylist = [];
+      this.currentPlaylistIndex = -1;
+      this.isPlayingParagraph = false;
+      this.ttsPlaying = false;
+    },
+
+    // 播放單一切片（點擊句子）- 事件驅動版
+    playSlice(sliceEl, audioUrl) {
+      if (this.currentPlayingSlice === sliceEl && (this.currentAudio || this.ttsPlaying)) {
+        this.stop();
+        return;
+      }
+
+      this.stop();
+
+      const sliceText = sliceEl.textContent;
+      
+      // 高亮當前切片
+      sliceEl.classList.add('playing');
+      this.currentPlayingSlice = sliceEl;
+
+      // 高亮對應的翻譯
+      const paraNum = sliceEl.dataset.para;
+      const sliceId = sliceEl.dataset.sliceId;
+      const unitId = document.querySelector('.article-paragraph-wrapper')?.id.replace('article-content-', '') || 'custom';
+      const transContainer = document.getElementById(unitId + '_trans-' + paraNum);
+      if (transContainer) {
+        const targetTrans = transContainer.querySelector('.translation-sentence[data-slice-id="' + sliceId + '"]');
+        if (targetTrans) {
+          targetTrans.classList.add('translation-highlight');
+          this.currentPlayingTranslation = targetTrans;
+        }
+      }
+
+      const playNext = () => {
+        sliceEl.classList.remove('playing');
+        if (this.currentPlayingTranslation) {
+          this.currentPlayingTranslation.classList.remove('translation-highlight');
+          this.currentPlayingTranslation = null;
+        }
+        this.currentPlayingSlice = null;
+        this.currentAudio = null;
+        if (this.currentButton) {
+          this.resetButton(this.currentButton);
+          this.currentButton = null;
+        }
+      };
+
+      // 嘗試播放音頻
+      if (audioUrl) {
+        const audio = new Audio(audioUrl);
+        
+        audio.onended = playNext;
+        
+        audio.onerror = () => {
+          console.log('音頻文件不存在，改用 TTS 播放');
+          this.ttsPlaying = true;
+          TTSController.speak(sliceText, () => {
+            this.ttsPlaying = false;
+            playNext();
+          });
+        };
+
+        audio.play().catch(() => {
+          console.log('音頻播放失敗，改用 TTS');
+          this.ttsPlaying = true;
+          TTSController.speak(sliceText, () => {
+            this.ttsPlaying = false;
+            playNext();
+          });
+        });
+
+        this.currentAudio = audio;
+      } else {
+        // 沒有音頻 URL，直接使用 TTS
+        console.log('無音頻文件，使用 TTS 播放');
+        this.ttsPlaying = true;
+        TTSController.speak(sliceText, () => {
+          this.ttsPlaying = false;
+          playNext();
+        });
+      }
+    },
+
+    // 播放整個段落（順序播放所有切片）
+    playParagraph(paraNum, unitId, button) {
+      // 如果點擊的是當前播放按鈕，停止播放
+      if (this.currentButton === button && (this.currentAudio || this.ttsPlaying)) {
+        this.stop();
+        return;
+      }
+
+      this.stop();
+
+      // 獲取該段落的所有切片元素
+      const paraElement = document.getElementById(unitId + '_para' + paraNum + '-text');
+      if (!paraElement) return;
+
+      const sliceElements = paraElement.querySelectorAll('.sentence-slice');
+      if (sliceElements.length === 0) return;
+
+      // 獲取該段落的所有音頻路徑
+      const slices = currentUnitData.article.paragraphs[paraNum - 1].slices;
+
+      // 建立播放列表
+      this.currentPlaylist = [];
+      sliceElements.forEach((sliceEl, index) => {
+        const sliceData = slices[index];
+        this.currentPlaylist.push({
+          audio: sliceData?.audio || null,
+          text: sliceEl.textContent,
+          sliceEl: sliceEl,
+          paraNum: paraNum,
+          sliceId: parseInt(sliceEl.dataset.sliceId)
+        });
+      });
+
+      if (this.currentPlaylist.length === 0) {
+        console.log('此段落沒有內容');
+        return;
+      }
+
+      // 設置按鈕狀態
+      this.currentButton = button;
+      button.innerHTML = '<i class="fas fa-stop"></i> 停止';
+      button.classList.add('playing');
+
+      this.currentPlaylistIndex = 0;
+      this.isPlayingParagraph = true;
+      
+      // 開始播放第一個句子
+      this._playNextInPlaylist();
+    },
+
+    // 播放列表中的下一個 - 事件驅動版
+    _playNextInPlaylist() {
+      if (!this.isPlayingParagraph || this.currentPlaylistIndex >= this.currentPlaylist.length) {
+        this.stop();
+        return;
+      }
+
+      const item = this.currentPlaylist[this.currentPlaylistIndex];
+
+      // 移除所有切片的 playing 類和翻譯高亮，然後高亮當前
+      document.querySelectorAll('.sentence-slice.playing').forEach(el => {
+        el.classList.remove('playing');
+      });
+      document.querySelectorAll('.translation-sentence.translation-highlight').forEach(el => {
+        el.classList.remove('translation-highlight');
+      });
+      
+      item.sliceEl.classList.add('playing');
+      
+      // 高亮對應的翻譯
+      const unitId = document.querySelector('.article-paragraph-wrapper')?.id.replace('article-content-', '') || 'custom';
+      const transContainer = document.getElementById(unitId + '_trans-' + item.paraNum);
+      if (transContainer) {
+        const targetTrans = transContainer.querySelector('.translation-sentence[data-slice-id="' + item.sliceId + '"]');
+        if (targetTrans) {
+          targetTrans.classList.add('translation-highlight');
+          this.currentPlayingTranslation = targetTrans;
+        }
+      }
+
+      const playNext = () => {
+        item.sliceEl.classList.remove('playing');
+        if (this.currentPlayingTranslation) {
+          this.currentPlayingTranslation.classList.remove('translation-highlight');
+          this.currentPlayingTranslation = null;
+        }
+        this.currentPlaylistIndex++;
+        this._playNextInPlaylist();
+      };
+
+      // 嘗試播放音頻
+      if (item.audio) {
+        const audio = new Audio(item.audio);
+        
+        audio.onended = playNext;
+        
+        audio.onerror = () => {
+          console.log('段落音頻文件不存在，改用 TTS 播放:', item.audio);
+          this._playTTSForItem(item, playNext);
+        };
+
+        audio.play().catch(() => {
+          console.log('段落音頻播放失敗，改用 TTS 播放');
+          this._playTTSForItem(item, playNext);
+        });
+
+        this.currentAudio = audio;
+      } else {
+        // 沒有音頻，直接使用 TTS
+        console.log('無音頻文件，使用 TTS 播放段落');
+        this._playTTSForItem(item, playNext);
+      }
+    },
+
+    // 為項目播放 TTS
+    _playTTSForItem(item, callback) {
+      if (this.ttsPlaying) return; // 防止重複
+      
+      this.ttsPlaying = true;
+      TTSController.speak(item.text, () => {
+        this.ttsPlaying = false;
+        callback();
+      });
+    },
+
+    // 播放詞彙
+    playVocabularyWord(vocabId, unitId, wordText) {
+      const btn = document.getElementById(`${unitId}_vocab-audio-btn-${vocabId}`);
+      
+      // 如果正在播放同一個詞彙，停止
+      if (this.currentButton === btn && (this.currentAudio || this.ttsPlaying)) {
+        this.stop();
+        return;
+      }
+
+      this.stop();
+
+      if (!btn) return;
+      
+      btn.classList.add('playing');
+      btn.innerHTML = '<i class="fas fa-stop"></i>';
+      this.currentButton = btn;
+
+      const playNext = () => {
+        btn.classList.remove('playing');
+        btn.innerHTML = '<i class="fas fa-volume-up"></i>';
+        this.currentButton = null;
+        this.currentAudio = null;
+      };
+
+      // 嘗試播放詞彙音頻（如果有）
+      const audioUrl = `./audio/words/${vocabId}.mp3`;
+      
+      const audio = new Audio(audioUrl);
+      
+      audio.onended = playNext;
+      
+      audio.onerror = () => {
+        console.log('詞彙音頻不存在，改用 TTS 播放');
+        this.ttsPlaying = true;
+        TTSController.speak(wordText, () => {
+          this.ttsPlaying = false;
+          playNext();
+        });
+      };
+
+      audio.play().catch(() => {
+        console.log('詞彙音頻播放失敗，改用 TTS');
+        this.ttsPlaying = true;
+        TTSController.speak(wordText, () => {
+          this.ttsPlaying = false;
+          playNext();
+        });
+      });
+
+      this.currentAudio = audio;
+    }
+  };
+
+  // 固定 tooltip 控制 - 加入除錯資訊
+  const FixedTooltip = {
+    tooltipEl: document.getElementById('fixed-tooltip'),
+    currentSliceKey: null,
+
+    generateSliceContent(paraNum, sliceId) {
+      const key = paraNum + '-' + sliceId;
+      const sliceData = sliceContents[key];
+      
+      // 除錯：檢查 sliceData
+      if (!sliceData) {
+        console.log('generateSliceContent: 找不到 sliceData', { key, sliceContents });
+        return '';
+      }
+      
+      const sliceText = sliceData.text;
+      const translation = sliceData.translation;
+      
+      // 取得詞彙解釋
+      const vocabItems = (sliceData.vocabIds || []).map(id => {
+        const v = currentUnitData?.vocabulary.find(v => v.id === id);
+        if (!v) {
+          console.log('找不到詞彙 ID:', id);
+          return null;
+        }
+        return '<div class="vocab-item"><strong>' + v.word + '</strong> ' + v.meaning + '</div>';
+      }).filter(Boolean);
+
+      let html = '<div class="phrase">「' + sliceText + '」 ' + translation + '</div>';
+      if (vocabItems.length) {
+        html += '<div class="vocab-list">' + vocabItems.join('') + '</div>';
+      } else {
+        html += '<div class="vocab-list">（無核心詞彙）</div>';
+      }
+      
+      return html;
+    },
+
+    show(paraNum, sliceId) {
+      const key = paraNum + '-' + sliceId;
+      console.log('滑鼠懸停:', { paraNum, sliceId, key });
+      console.log('sliceContents[key]:', sliceContents[key]);
+      
+      if (this.currentSliceKey === key && this.tooltipEl.classList.contains('show')) return;
+      
+      const content = this.generateSliceContent(paraNum, sliceId);
+      console.log('生成的內容:', content);
+      
+      if (!content) return;
+      
+      this.currentSliceKey = key;
+      this.tooltipEl.innerHTML = content;
+      this.tooltipEl.classList.add('show');
+    },
+
+    hide() {
+      this.tooltipEl.classList.remove('show');
+      this.currentSliceKey = null;
+    }
+  };
+
+  // 句子高亮控制
+  const SliceHover = {
+    highlightTranslation(unitId, paraNum, sliceId) {
+      const transContainer = document.getElementById(unitId + '_trans-' + paraNum);
+      if (transContainer) {
+        const targetTrans = transContainer.querySelector('.translation-sentence[data-slice-id="' + sliceId + '"]');
+        if (targetTrans) targetTrans.classList.add('translation-highlight');
+      }
+    },
+    
+    clearTranslationHighlight() {
+      document.querySelectorAll('.translation-sentence.translation-highlight').forEach(el => el.classList.remove('translation-highlight'));
+    },
+    
+    highlightSliceAndSelf(unitId, paraNum, sliceId, targetElement) {
+      document.querySelectorAll('#' + unitId + '_para' + paraNum + '-text .sentence-slice[data-slice-id="' + sliceId + '"]').forEach(el => el.classList.add('sentence-selected'));
+      if (targetElement) targetElement.classList.add('translation-highlight');
+    },
+    
+    clearSliceAndSelfHighlight() {
+      document.querySelectorAll('.sentence-slice.sentence-selected').forEach(el => el.classList.remove('sentence-selected'));
+      document.querySelectorAll('.translation-sentence.translation-highlight').forEach(el => el.classList.remove('translation-highlight'));
+    }
+  };
+
+  // 輔助函數：格式化語法分析
+  function formatGrammar(grammar) {
+    if (!grammar) return '';
+    if (grammar.techniques && Array.isArray(grammar.techniques)) {
+      let html = '<div class="grammar-techniques">';
+      if (grammar.display) {
+        html += '<div>' + grammar.display.replace(/\n/g, '<br>') + '</div>';
+      } else {
+        grammar.techniques.forEach(tech => {
+          html += '<div class="technique-item">';
+          html += '<div class="technique-type">' + (tech.type || '') + '</div>';
+          if (tech.example) {
+            html += '<div class="technique-example">「' + tech.example + '」</div>';
+          }
+          if (tech.effect) {
+            html += '<div class="technique-effect">' + tech.effect + '</div>';
+          }
+          html += '</div>';
+        });
+      }
+      html += '</div>';
+      return html;
+    }
+    return grammar.replace(/\n/g, '<br>');
+  }
+
+  // 渲染器 - 已修復：加入 window.sliceContents 同步
+  const Renderer = {
+    renderAll(data, unitId = 'custom') {
+      if (!data) return;
+      currentUnitData = data;
+      sliceContents = {};
+      window.sliceContents = sliceContents; // 同步全域變數
+      
+      console.log('開始渲染，數據:', data);
+      
+      // 先渲染文章內容
+      this.renderArticle(data, unitId);
+      
+      // 再渲染其他區塊（賞析、課文重點、簡答題）
+      this.renderAppreciation(data);
+      this.renderKeyPoints(data);
+      this.renderShortAnswer(data);
+      
+      // 使用 setTimeout 確保 DOM 完全載入後再綁定事件
+      setTimeout(() => {
+        console.log('開始綁定事件...');
+        this.attachHoverListeners(unitId);
+        this.attachSliceClickListeners(unitId);
+        this.attachSliceTooltips();
+        this.attachTranslationHoverTooltip(unitId);
+        
+        console.log('事件綁定完成，sliceContents:', sliceContents);
+        console.log('詞彙數據:', data.vocabulary);
+        
+        // 再次確保全域變數同步
+        window.sliceContents = sliceContents;
+      }, 500);
+    },
+
+    renderArticle(data, unitId) {
+      const container = document.getElementById('article-section');
+      const art = data.article;
+      let html = '<div class="article-header"><h3 class="article-title" lang="zh">' + art.title + '</h3></div><div class="article-paragraph-wrapper" id="article-content-' + unitId + '">';
+
+      art.paragraphs.forEach((para, paraIndex) => {
+        const paraNum = paraIndex + 1;
+        const slices = para.slices || [];
+        
+        // 填充 sliceContents 並同步全域變數
+        slices.forEach((slice, sliceIndex) => {
+          const sliceId = sliceIndex + 1;
+          const key = paraNum + '-' + sliceId;
+          sliceContents[key] = {
+            text: slice.text,
+            translation: slice.translation,
+            vocabIds: slice.vocabIds || []
+          };
+          // 同步更新全域變數
+          window.sliceContents = sliceContents;
+        });
+        
+        html += '<div class="single-paragraph" id="' + unitId + '_para' + paraNum + '-text" data-para="' + paraNum + '">';
+        slices.forEach((slice, sliceIndex) => {
+          const sliceId = sliceIndex + 1;
+          html += '<span class="sentence-slice" data-para="' + paraNum + '" data-slice-id="' + sliceId + '" data-audio="' + (slice.audio || '') + '">' + slice.text + '</span> ';
+        });
+        html += '</div>';
+
+        html += '<div class="paragraph-controls">' +
+          '<button class="btn btn-outline paragraph-audio-btn" onclick="AudioController.playParagraph(' + paraNum + ', \'' + unitId + '\', this)" id="' + unitId + '_para-audio-btn-' + paraNum + '"><i class="fas fa-volume-up"></i> 朗讀</button>' +
+          '<div class="toggle-button-group">' +
+          '<button class="btn toggle-btn" onclick="Renderer.showTranslation(' + paraNum + ',\'' + unitId + '\')" id="' + unitId + '_trans-btn-' + paraNum + '"><i class="fas fa-exchange-alt"></i> 語譯</button>' +
+          '<button class="btn toggle-btn" onclick="Renderer.showImplication(' + paraNum + ',\'' + unitId + '\')" id="' + unitId + '_impl-btn-' + paraNum + '"><i class="fas fa-lightbulb"></i> 解讀</button>' +
+          '</div>' +
+          '<button class="btn btn-outline footnote-btn" onclick="Renderer.toggleFootnote(' + paraNum + ',\'' + unitId + '\')" id="' + unitId + '_footnote-btn-' + paraNum + '"><i class="fas fa-book-open"></i> 腳註</button>' +
+          '</div>';
+
+        html += '<div class="unified-content" id="' + unitId + '_content-' + paraNum + '">' +
+          '<div class="translation-content" id="' + unitId + '_trans-' + paraNum + '" style="display: block;">';
+        
+        slices.forEach((slice, sliceIndex) => {
+          const sliceId = sliceIndex + 1;
+          html += '<span class="translation-sentence" data-slice-id="' + sliceId + '" data-para="' + paraNum + '">' + slice.translation + '</span> ';
+        });
+        
+        html += '</div>' +
+          '<div class="implication-content" id="' + unitId + '_impl-' + paraNum + '" style="display: none;">' +
+          '<div class="section"><strong>本段主旨：</strong><div class="section-content">' + (para.implication?.summary || '') + '</div></div>' +
+          '<div class="section"><strong>換句話說：</strong><div class="section-content">' + (para.implication?.paraphrase || '') + '</div></div>' +
+          '<div class="section"><strong>語法分析：</strong><div class="section-content">' + formatGrammar(para.implication?.grammar) + '</div></div>' +
+          '</div></div>';
+
+        const vocabIdsSet = new Set();
+        slices.forEach(slice => {
+          (slice.vocabIds || []).forEach(id => vocabIdsSet.add(id));
+        });
+        const paraVocabIds = Array.from(vocabIdsSet).sort((a, b) => a - b);
+        
+        if (paraVocabIds.length) {
+          html += '<div class="footnotes-section" id="' + unitId + '_footnotes-' + paraNum + '" style="display:none;"><h5><i class="fas fa-book-open"></i> 本段註釋</h5><ol>';
+          paraVocabIds.forEach(id => {
+            const v = data.vocabulary.find(v => v.id === id);
+            if (v) {
+              const contextSlice = slices.find(s => (s.vocabIds || []).includes(id))?.text || '';
+              html += '<li><strong>' + v.word + '</strong> ' + v.meaning + ' <span class="context">「' + contextSlice + '」</span></li>';
+            }
+          });
+          html += '</ol></div>';
+        }
+      });
+      
+      html += '</div>';
+      container.innerHTML = html;
+    },
+
+    renderAppreciation(data) {
+      const appreciationDiv = document.getElementById('appreciation-content');
+      if (!appreciationDiv) return;
+      if (!data.appreciation || !data.appreciation.content || data.appreciation.content.length === 0) {
+        appreciationDiv.innerHTML = '<p>暫無文章賞析</p>';
+        return;
+      }
+      let html = '';
+      data.appreciation.content.forEach(section => {
+        html += '<div class="appreciation-section">';
+        html += '<h4>' + (section.section || '') + '</h4>';
+        html += '<p>' + (section.text || '').replace(/\n/g, '<br>') + '</p>';
+        html += '</div>';
+      });
+      appreciationDiv.innerHTML = html;
+    },
+
+    renderKeyPoints(data) {
+      const keyDiv = document.getElementById('key-points-content');
+      if (!keyDiv) return;
+      if (!data.keyPoints || !data.keyPoints.points || data.keyPoints.points.length === 0) {
+        keyDiv.innerHTML = '<p>暫無課文重點</p>';
+        return;
+      }
+      let html = '';
+      data.keyPoints.points.forEach(point => {
+        html += '<div class="point-item"><strong>' + (point.phrase || '') + '</strong> ' + (point.explanation || '') + '</div>';
+      });
+      keyDiv.innerHTML = html;
+    },
+
+    renderShortAnswer(data) {
+      const shortDiv = document.getElementById('short-answer-content');
+      if (!shortDiv) return;
+      if (data.examQuestions && data.examQuestions.questions && data.examQuestions.questions.length > 0) {
+        let html = '';
+        data.examQuestions.questions.forEach(qa => {
+          html += '<div class="qa-item"><div class="question">' + (qa.question || '') + '</div><div class="answer">' + (qa.answer || '').replace(/\n/g, '<br>') + '</div></div>';
+        });
+        shortDiv.innerHTML = html;
+      } else {
+        shortDiv.innerHTML = '<p>此課文暫無簡答題</p>';
+      }
+    },
+
+    attachHoverListeners(unitId) {
+      document.querySelectorAll('.sentence-slice').forEach(el => {
+        if (el.hasAttribute('data-hover-listener')) return;
+        el.setAttribute('data-hover-listener', 'true');
+        el.addEventListener('mouseenter', (e) => {
+          const paraNum = e.target.dataset.para;
+          const sliceId = e.target.dataset.sliceId;
+          if (paraNum && sliceId) {
+            SliceHover.highlightTranslation(unitId, paraNum, sliceId);
+          }
+        });
+        el.addEventListener('mouseleave', () => SliceHover.clearTranslationHighlight());
+      });
+      
+      document.querySelectorAll('.translation-sentence').forEach(el => {
+        if (el.hasAttribute('data-chinese-hover')) return;
+        el.setAttribute('data-chinese-hover', 'true');
+        el.addEventListener('mouseenter', (e) => {
+          const paraNum = e.target.dataset.para;
+          const sliceId = e.target.dataset.sliceId;
+          if (paraNum && sliceId) {
+            SliceHover.highlightSliceAndSelf(unitId, paraNum, sliceId, e.target);
+          }
+        });
+        el.addEventListener('mouseleave', () => SliceHover.clearSliceAndSelfHighlight());
+      });
+    },
+
+    attachSliceClickListeners(unitId) {
+      document.querySelectorAll('.sentence-slice').forEach(slice => {
+        if (slice.hasAttribute('data-click-listener')) return;
+        slice.setAttribute('data-click-listener', 'true');
+        slice.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const audioUrl = e.target.dataset.audio;
+          AudioController.playSlice(e.target, audioUrl);
+        });
+      });
+    },
+
+    attachSliceTooltips() {
+      console.log('綁定 tooltip 事件...');
+      document.querySelectorAll('.sentence-slice').forEach(slice => {
+        if (slice.hasAttribute('data-tooltip-bound')) return;
+        slice.setAttribute('data-tooltip-bound', 'true');
+        const paraNum = slice.dataset.para;
+        const sliceId = slice.dataset.sliceId;
+        slice.addEventListener('mouseenter', () => FixedTooltip.show(parseInt(paraNum), parseInt(sliceId)));
+        slice.addEventListener('mouseleave', () => FixedTooltip.hide());
+      });
+      console.log('tooltip 事件綁定完成');
+    },
+
+    attachTranslationHoverTooltip(unitId) {
+      document.querySelectorAll('.translation-sentence').forEach(trans => {
+        if (trans.hasAttribute('data-trans-tooltip')) return;
+        trans.setAttribute('data-trans-tooltip', 'true');
+        trans.addEventListener('mouseenter', (e) => {
+          const paraNum = e.target.dataset.para;
+          const sliceId = e.target.dataset.sliceId;
+          if (paraNum && sliceId) {
+            FixedTooltip.show(parseInt(paraNum), parseInt(sliceId));
+          }
+        });
+        trans.addEventListener('mouseleave', () => FixedTooltip.hide());
+      });
+    },
+
+    showTranslation(paraNum, unitId) {
+      const trans = document.getElementById(unitId + '_trans-' + paraNum);
+      const impl = document.getElementById(unitId + '_impl-' + paraNum);
+      const btnT = document.getElementById(unitId + '_trans-btn-' + paraNum);
+      const btnI = document.getElementById(unitId + '_impl-btn-' + paraNum);
+      
+      if (trans.style.display === 'block') {
+        trans.style.display = 'none';
+        btnT.classList.remove('active');
+      } else {
+        trans.style.display = 'block';
+        impl.style.display = 'none';
+        btnT.classList.add('active');
+        btnI.classList.remove('active');
+      }
+    },
+
+    showImplication(paraNum, unitId) {
+      const trans = document.getElementById(unitId + '_trans-' + paraNum);
+      const impl = document.getElementById(unitId + '_impl-' + paraNum);
+      const btnT = document.getElementById(unitId + '_trans-btn-' + paraNum);
+      const btnI = document.getElementById(unitId + '_impl-btn-' + paraNum);
+      
+      if (impl.style.display === 'flex' || impl.style.display === 'block') {
+        impl.style.display = 'none';
+        btnI.classList.remove('active');
+      } else {
+        impl.style.display = 'flex';
+        trans.style.display = 'none';
+        btnI.classList.add('active');
+        btnT.classList.remove('active');
+      }
+    },
+
+    toggleFootnote(paraNum, unitId) {
+      const foot = document.getElementById(unitId + '_footnotes-' + paraNum);
+      const btn = document.getElementById(unitId + '_footnote-btn-' + paraNum);
+      
+      if (foot.style.display === 'none' || foot.style.display === '') {
+        foot.style.display = 'block';
+        btn.classList.add('active');
+      } else {
+        foot.style.display = 'none';
+        btn.classList.remove('active');
+      }
+    }
+  };
+
+  // 載入索引檔
+  async function loadUnitsIndex() {
+    try {
+      // 嘗試載入索引檔
+      const response = await fetch('./data/units-index.json');
+      const loadedUnits = await response.json();
+      
+      // 重要：檢查是否真的有檔案內容
+      if (loadedUnits && Array.isArray(loadedUnits) && loadedUnits.length > 0) {
+        unitsIndex = loadedUnits;
+        console.log('索引單元載入成功:', unitsIndex);
+      } else {
+        // 如果檔案是空的，設為空陣列
+        unitsIndex = [];
+        console.log('索引單元檔案為空');
+      }
+    } catch (e) {
+      // 如果載入失敗（檔案不存在），設為空陣列
+      console.error('載入索引檔失敗，使用空陣列', e);
+      unitsIndex = [];
+    }
+    
+    // 重新整理下拉選單（由 UI 增強模組處理）
+    if (window.DSEUIEnhancements) {
+      window.DSEUIEnhancements.refreshUnitSelect();
+    }
+  }
+
+  async function loadUnitById(unitId) {
+    const unit = unitsIndex.find(u => u.unitId === unitId);
+    if (!unit) return;
+    
+    try {
+      const response = await fetch(unit.dataUrl);
+      const data = await response.json();
+      Renderer.renderAll(data, unit.unitId);
+    } catch (e) {
+      console.error('載入課文失敗', e);
+      alert('無法載入課文：' + unit.unitName);
+    }
+  }
+
+  // 下拉選單變更事件（同時處理上傳單元和索引單元）
+  document.getElementById('unit-select').addEventListener('change', function(e) {
+    const selectedOption = e.target.options[e.target.selectedIndex];
+    const unitId = selectedOption.value;
+    
+    if (!unitId) return;
+    
+    // 檢查是否為上傳的單元（有 dataset.data）
+    if (selectedOption.dataset.data) {
+      const data = JSON.parse(selectedOption.dataset.data);
+      Renderer.renderAll(data, unitId);
+    } else if (selectedOption.dataset.url) {
+      // 原本的載入方式（從伺服器獲取）
+      loadUnitById(unitId);
+    }
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    if (event.reason && event.reason.message && 
+        (event.reason.message.includes('play') || 
+         event.reason.message.includes('audio'))) {
+      event.preventDefault();
+    }
+  });
+
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.getVoices();
+  }
+
+  window.onload = loadUnitsIndex;
+</script>
+</body>
+</html>
