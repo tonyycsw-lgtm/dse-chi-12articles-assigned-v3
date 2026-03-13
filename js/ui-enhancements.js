@@ -210,7 +210,7 @@
     e.target.value = '';
   }
 
-     // ========== 下拉選單與分類篩選 ==========
+  // ========== 下拉選單與分類篩選 ==========
   function refreshUnitSelect(filteredUnits = null) {
     const select = document.getElementById('unit-select');
     if (!select) return;
@@ -219,42 +219,64 @@
     select.innerHTML = '<option value="">請選擇課文</option>';
 
     let unitsToShow = [];
+    let hasAnyUnits = false;
 
     // 1. 加入上傳的單元（來自 localStorage）
-    const uploadedUnits = Object.entries(core.getAllUnits()).map(([id, unit]) => ({
+    const uploadedUnitsMap = core.getAllUnits();
+    const uploadedUnits = Object.entries(uploadedUnitsMap).map(([id, unit]) => ({
       id,
       name: unit.name,
       data: unit.data,
       type: 'upload'
     }));
-    unitsToShow.push(...uploadedUnits);
+    
+    if (uploadedUnits.length > 0) {
+      unitsToShow.push(...uploadedUnits);
+      hasAnyUnits = true;
+    }
 
-    // 2. 加入索引單元（來自全域 unitsIndex）- 但只有當 unitsIndex 存在且不為空時
+    // 2. 加入索引單元（來自全域 unitsIndex）- 但需要驗證檔案是否真的存在
     if (typeof unitsIndex !== 'undefined' && Array.isArray(unitsIndex) && unitsIndex.length > 0) {
-      const indexUnits = unitsIndex.map(item => ({
-        id: item.unitId,
-        name: item.unitName,
-        dataUrl: item.dataUrl,
-        type: 'index'
-      }));
-      unitsToShow.push(...indexUnits);
+      // 過濾掉可能不存在的索引單元（這裡可以加入更多驗證）
+      const validIndexUnits = unitsIndex.filter(item => {
+        // 基本驗證：確保有必要的欄位
+        return item.unitId && item.unitName && item.dataUrl;
+      });
+      
+      if (validIndexUnits.length > 0) {
+        const indexUnits = validIndexUnits.map(item => ({
+          id: item.unitId,
+          name: item.unitName,
+          dataUrl: item.dataUrl,
+          type: 'index'
+        }));
+        unitsToShow.push(...indexUnits);
+        hasAnyUnits = true;
+      }
     }
 
     // 3. 若有篩選條件，則過濾
     if (filteredUnits && filteredUnits.length > 0) {
       // filteredUnits 來自 core.filterUnits，只包含上傳單元
-      // 我們只顯示符合條件的上傳單元，索引單元不參與篩選（保持全部顯示）
       const filteredIds = new Set(filteredUnits.map(u => u.id));
+      
+      // 重新建構 unitsToShow：只包含符合條件的上傳單元 + 所有索引單元
       unitsToShow = [
         ...uploadedUnits.filter(u => filteredIds.has(u.id)),
         ...(typeof unitsIndex !== 'undefined' && Array.isArray(unitsIndex) && unitsIndex.length > 0 
-            ? unitsIndex.map(item => ({ id: item.unitId, name: item.unitName, dataUrl: item.dataUrl, type: 'index' })) 
+            ? unitsIndex
+                .filter(item => item.unitId && item.unitName && item.dataUrl)
+                .map(item => ({ id: item.unitId, name: item.unitName, dataUrl: item.dataUrl, type: 'index' })) 
             : [])
       ];
+      
+      if (unitsToShow.length > 0) {
+        hasAnyUnits = true;
+      }
     }
 
     // 如果完全沒有任何單元可顯示
-    if (unitsToShow.length === 0) {
+    if (!hasAnyUnits || unitsToShow.length === 0) {
       select.innerHTML = '<option value="">沒有可用的課文</option>';
       return;
     }
@@ -262,7 +284,18 @@
     // 依名稱排序
     unitsToShow.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
 
-    unitsToShow.forEach(item => {
+    // 清除重複的 ID（防止意外情況）
+    const seenIds = new Set();
+    const uniqueUnitsToShow = unitsToShow.filter(item => {
+      if (seenIds.has(item.id)) {
+        console.warn('發現重複的單元 ID:', item.id);
+        return false;
+      }
+      seenIds.add(item.id);
+      return true;
+    });
+
+    uniqueUnitsToShow.forEach(item => {
       const option = document.createElement('option');
       option.value = item.id;
       option.textContent = item.name;
@@ -283,7 +316,6 @@
     //   select.value = select.options[1].value;
     // }
   }
-
   function buildCategoryFilters() {
     const container = document.getElementById('filter-container');
     if (!container) return;
