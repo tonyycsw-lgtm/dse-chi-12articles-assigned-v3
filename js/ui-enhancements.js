@@ -381,68 +381,74 @@
     }
   }
 
-  // ========== 下拉選單與完整分類篩選 ==========
-  function refreshUnitSelect(filteredUnits = null) {
-    const select = document.getElementById('unit-select');
-    if (!select) return;
+function refreshUnitSelect(filteredUnits = null) {
+  const select = document.getElementById('unit-select');
+  if (!select) return;
 
-    const currentValue = select.value;
-    select.innerHTML = '<option value="">請選擇課文</option>';
+  const currentValue = select.value;
+  select.innerHTML = '<option value="">請選擇課文</option>';
 
-    let unitsToShow = [];
-    let hasAnyUnits = false;
+  let unitsToShow = [];
+  let hasAnyUnits = false;
 
-    const uploadedUnitsMap = core.getAllUnits();
-    const uploadedUnits = Object.entries(uploadedUnitsMap).map(([id, unit]) => ({
-      id,
-      name: unit.name,
-      data: unit.data,
-      type: 'upload'
-    }));
+  const uploadedUnitsMap = core.getAllUnits();
+  const uploadedUnits = Object.entries(uploadedUnitsMap).map(([id, unit]) => ({
+    id,
+    name: unit.name,
+    data: unit.data,
+    type: 'upload'
+  }));
+
+  // 如果有篩選條件，則只顯示符合條件的單元
+  if (filteredUnits && filteredUnits.length > 0) {
+    const filteredIds = new Set(filteredUnits.map(u => u.id));
+    unitsToShow = uploadedUnits.filter(u => filteredIds.has(u.id));
     
-    if (uploadedUnits.length > 0) {
-      unitsToShow.push(...uploadedUnits);
+    if (unitsToShow.length > 0) {
       hasAnyUnits = true;
     }
-
-    if (filteredUnits && filteredUnits.length > 0) {
-      const filteredIds = new Set(filteredUnits.map(u => u.id));
-      unitsToShow = uploadedUnits.filter(u => filteredIds.has(u.id));
-      
-      if (unitsToShow.length > 0) {
-        hasAnyUnits = true;
-      }
-    }
-
-    if (!hasAnyUnits || unitsToShow.length === 0) {
-      select.innerHTML = '<option value="">沒有可用的課文</option>';
-      return;
-    }
-
-    unitsToShow.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
-
-    const seenIds = new Set();
-    const uniqueUnitsToShow = unitsToShow.filter(item => {
-      if (seenIds.has(item.id)) {
-        console.warn('發現重複的單元 ID:', item.id);
-        return false;
-      }
-      seenIds.add(item.id);
-      return true;
-    });
-
-    uniqueUnitsToShow.forEach(item => {
-      const option = document.createElement('option');
-      option.value = item.id;
-      option.textContent = item.name;
-      option.dataset.data = JSON.stringify(item.data);
-      select.appendChild(option);
-    });
-
-    if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
-      select.value = currentValue;
+  } 
+  // 如果沒有篩選條件，顯示所有單元
+  else {
+    unitsToShow = [...uploadedUnits];
+    if (uploadedUnits.length > 0) {
+      hasAnyUnits = true;
     }
   }
+
+  // 如果完全沒有任何單元可顯示
+  if (!hasAnyUnits || unitsToShow.length === 0) {
+    select.innerHTML = '<option value="">沒有可用的課文</option>';
+    return;
+  }
+
+  // 依名稱排序
+  unitsToShow.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+
+  // 清除重複的 ID
+  const seenIds = new Set();
+  const uniqueUnitsToShow = unitsToShow.filter(item => {
+    if (seenIds.has(item.id)) {
+      console.warn('發現重複的單元 ID:', item.id);
+      return false;
+    }
+    seenIds.add(item.id);
+    return true;
+  });
+
+  uniqueUnitsToShow.forEach(item => {
+    const option = document.createElement('option');
+    option.value = item.id;
+    option.textContent = item.name;
+    option.dataset.data = JSON.stringify(item.data);
+    select.appendChild(option);
+  });
+
+  // 嘗試恢復之前選取的值
+  if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
+    select.value = currentValue;
+  }
+}
 
   // ========== 完整篩選 UI ==========
   function buildCategoryFilters() {
